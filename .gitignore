@@ -102,11 +102,11 @@ config.php
 # ignore php ini user
 .user.ini
 
-/data/
-!/data/README.md
-/storage/
-!/storage/README.md
 /public/
 !/public/index.php
 !/public/.htaccess
+!/storage/README.md
+/data/
+!/data/README.md
+/storage/
 
