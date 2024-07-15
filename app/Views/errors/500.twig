@@ -1,0 +1,11 @@
+{% extends "base.twig" %}
+{% block body %}
+<div class="exception">
+    <h1 class="title-error-code">500</h1>
+    <h2>{{ __('Internal Server Error') }}</h2>
+    <code>{{ exception.getMessage()|protect_path }}</code>
+    {% if (displayErrorDetails ?? null) %}
+        <pre>{{ exception.getTraceAsString()|protect_path }}</pre>
+    {% endif %}
+</div>
+{% endblock %}

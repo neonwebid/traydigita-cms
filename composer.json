@@ -1,0 +1,38 @@
+{
+    "name": "neonwebid/traydigita-cms",
+    "description": "Neon Web ID Tray Digita CMS",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "ArrayIterator",
+            "email": "arrayiterator@gmail.com",
+            "role": "developer"
+        }
+    ],
+    "require": {
+        "php": "^8.2|^8.3",
+        "arrayaccess/traydigita": "^2.0.2"
+    },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "3.7.2",
+        "slevomat/coding-standard": "^8.14"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "ArrayAccess\\TrayDigita\\App\\Modules\\": "app/Modules",
+            "ArrayAccess\\TrayDigita\\App\\Commands\\": "app/Commands",
+            "ArrayAccess\\TrayDigita\\App\\Controllers\\": "app/Controllers",
+            "ArrayAccess\\TrayDigita\\App\\Entities\\": "app/Entities",
+            "ArrayAccess\\TrayDigita\\App\\Middlewares\\": "app/Middlewares",
+            "ArrayAccess\\TrayDigita\\App\\DatabaseEvents\\": "app/DatabaseEvents",
+            "ArrayAccess\\TrayDigita\\App\\Schedulers\\": "app/Schedulers"
+        }
+    }
+}

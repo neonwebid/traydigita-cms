@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html{{ html_attributes() }}>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title??'' }}</title>
+    {{ content_header() }}
+{% block head %}{% endblock %}
+</head>
+<body{{ body_attributes() }}>
+<div id="page" class="page-wrapper">
+{{ body_open() }}
+{% block body %}{% endblock %}
+{{ body_close() }}
+</div>
+<!-- #page -->
+{{ content_footer() }}
+</body>
+</html>

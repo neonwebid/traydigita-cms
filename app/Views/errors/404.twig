@@ -1,0 +1,14 @@
+{% extends "base.twig" %}
+{% if title is not defined %}
+    {% set title = __('404 page not found') %}
+{% endif %}
+{% block body %}
+    <div id="content" class="container page-error error-404">
+        <header>
+            <h1 class="page-title">404</h1>
+        </header>
+        <div class="content">
+            {{ __('The page you requested was not found.') }}
+        </div>
+    </div>
+{% endblock %}

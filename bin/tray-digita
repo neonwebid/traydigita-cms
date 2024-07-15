@@ -1,0 +1,21 @@
+#!/usr/bin/env php
+<?php
+declare(strict_types=1);
+
+namespace ArrayAccess\TrayDigita\Root\Bin;
+
+use ArrayAccess\TrayDigita\Bin;
+use function dirname;
+use const DIRECTORY_SEPARATOR;
+
+(function() {
+    // define app directory
+    define('TD_APP_DIRECTORY', dirname(__DIR__) . DIRECTORY_SEPARATOR . 'app');
+
+    // define current index file
+    define('TD_INDEX_FILE', dirname(__DIR__) . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'index.php');
+
+    require dirname(__DIR__) .'/vendor/autoload.php';
+    Bin::run();
+    exit(0);
+})();
