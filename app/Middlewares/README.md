@@ -7,5 +7,5 @@ Middleware will automatically load.
 Can be generated with:
 
 ```bash
-php bin/tray-digita app:generate:middleware
+php bin/neon app:generate:middleware
 ```

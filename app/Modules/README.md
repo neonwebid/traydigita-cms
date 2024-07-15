@@ -6,5 +6,5 @@ Modules directory this will autoload via kernel init.
 Can be generated with:
 
 ```bash
-php bin/tray-digita app:generate:module
+php bin/neon app:generate:module
 ```

@@ -7,5 +7,5 @@ The controllers file on controllers directory will autoload via kernel init.
 Can be generated with:
 
 ```bash
-php bin/tray-digita app:generate:controller
+php bin/neon app:generate:controller
 ```

@@ -5,5 +5,5 @@ Database directory for database events.
 Can be generated with:
 
 ```bash
-php bin/tray-digita app:generate:database-event
+php bin/neon app:generate:database-event
 ```

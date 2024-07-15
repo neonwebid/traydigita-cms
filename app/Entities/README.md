@@ -7,5 +7,5 @@ The entity file on entities directory will autoload via connection object.
 Can be generated with:
 
 ```bash
-php bin/tray-digita app:generate:entity
+php bin/neon app:generate:entity
 ```

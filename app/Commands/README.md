@@ -7,5 +7,5 @@ The command file will autoload into application console.
 Can be generated with:
 
 ```bash
-php bin/tray-digita app:generate:command
+php bin/neon app:generate:command
 ```
