@@ -24,7 +24,7 @@
     <rule ref="Generic.Arrays.DisallowLongArraySyntax"/>
 
     <!-- Path To Check -->
-    <file>bin/tray-digita</file>
+    <file>bin/neon</file>
     <!-- <file>public/index.php</file>-->
     <file>app/Commands</file>
     <file>app/Entities</file>
