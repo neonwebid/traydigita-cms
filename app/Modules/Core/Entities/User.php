@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace ArrayAccess\TrayDigita\App\Modules\Core\Entities;
 
+use ArrayAccess\TrayDigita\Auth\Roles\InstanceRole;
+use ArrayAccess\TrayDigita\Auth\Roles\Interfaces\RoleInterface;
 use ArrayAccess\TrayDigita\Database\Entities\Abstracts\AbstractUser;
 use DateTimeInterface;
 use Doctrine\DBAL\Types\Types;
@@ -221,7 +223,7 @@ class User extends AbstractUser
             fetch: 'EAGER'
         )
     ]
-    protected ?Role $roleObject = null;
+    protected ?RoleInterface $roleObject = null;
 
     public function getSiteId(): ?int
     {
@@ -244,14 +246,21 @@ class User extends AbstractUser
         $this->setSiteId($site?->getId());
     }
 
-    public function getObjectRole(): Role
+    public function getObjectRole(): RoleInterface
     {
         if (!$this->roleObject) {
-            $this->roleObject = new Role();
-            $this->roleObject->setIdentity($this->getRole());
-            $this->roleObject->setName($this->getRole());
-            $entity = $this->getEntityManager();
-            $entity && $this->roleObject->setEntityManager($entity);
+            $role = $this->getRole();
+            if (trim($role) !== '') {
+                $this->roleObject = new Role();
+                $this->roleObject->setIdentity($this->getRole());
+                $this->roleObject->setName($this->getRole());
+                $entity = $this->getEntityManager();
+                $entity && $this->roleObject->setEntityManager($entity);
+            } else {
+                $instanceRole = InstanceRole::create(self::UNKNOWN, self::UNKNOWN);
+                $role = $this->getManager()?->dispatch('entity.emptyRole', $instanceRole);
+                $this->roleObject = $role instanceof RoleInterface ? $role : $instanceRole;
+            }
         }
         return $this->roleObject;
     }

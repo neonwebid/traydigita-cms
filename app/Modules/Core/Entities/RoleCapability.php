@@ -82,7 +82,7 @@ class RoleCapability extends AbstractEntity
         JoinColumn(
             name: 'site_id',
             referencedColumnName: 'site_id',
-            nullable: false,
+            nullable: true,
             onDelete: 'RESTRICT',
             options: [
                 'relation_name' => 'relation_role_capabilities_identity_roles_identity_sites_id',
@@ -119,7 +119,7 @@ class RoleCapability extends AbstractEntity
         JoinColumn(
             name: 'site_id',
             referencedColumnName: 'site_id',
-            nullable: false,
+            nullable: true,
             onDelete: 'RESTRICT',
             options: [
                 'relation_name' => 'relation_roles_cap_cap_id_capabilities_identity_site_id',

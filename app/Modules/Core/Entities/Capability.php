@@ -3,11 +3,13 @@ declare(strict_types=1);
 
 namespace ArrayAccess\TrayDigita\App\Modules\Core\Entities;
 
+use ArrayAccess\TrayDigita\Auth\Roles\InstanceRole;
 use ArrayAccess\TrayDigita\Auth\Roles\Interfaces\RoleInterface;
 use ArrayAccess\TrayDigita\Database\Entities\Abstracts\AbstractEntity;
 use ArrayAccess\TrayDigita\Database\Entities\Interfaces\CapabilityEntityInterface;
 use ArrayAccess\TrayDigita\Exceptions\InvalidArgument\EmptyArgumentException;
 use ArrayAccess\TrayDigita\Util\Filter\IterableHelper;
+use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Platforms\AbstractMySQLPlatform;
 use Doctrine\DBAL\Types\Types;
@@ -206,7 +208,7 @@ class Capability extends AbstractEntity implements CapabilityEntityInterface
         $this->type = $this->normalizeType($type);
     }
 
-    public function normalizeType(?string $type): string
+    public function normalizeType(?string $type): ?string
     {
         return $type && $type !== self::TYPE_GLOBAL ? match (trim($type)) {
             '' => self::TYPE_GLOBAL_ALTERNATE,
@@ -214,7 +216,7 @@ class Capability extends AbstractEntity implements CapabilityEntityInterface
         } : self::TYPE_GLOBAL_ALTERNATE;
     }
 
-    public function getNormalizeType() : string
+    public function getNormalizeType() : ?string
     {
         return $this->normalizeType($this->getType());
     }
@@ -259,6 +261,21 @@ class Capability extends AbstractEntity implements CapabilityEntityInterface
                 return $r->getRole();
             }
         );
+    }
+
+    public function add(RoleInterface|string $role): RoleInterface
+    {
+        if (!$role instanceof Role) {
+            $role = is_string($role) ? InstanceRole::create($role, $role) : $role;
+            $roleCap = new Role();
+            $roleCap->setName($role->getRole());
+            $roleCap->setIdentity($role->getIdentity());
+            $roleCap->setDescription($role->getDescription());
+        }
+        $collection = $this->getRoleCapability();
+        $collection ??= new ArrayCollection();
+        $collection->add($role);
+        return $role;
     }
 
     public function getSiteId(): ?int

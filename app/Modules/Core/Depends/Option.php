@@ -19,11 +19,28 @@ use function str_contains;
 
 class Option extends AbstractRepositoryUserDepends
 {
+    /**
+     * @var array<string, Options>
+     */
+    private array $deferred = [];
+
+    /**
+     * Get entity manager
+     *
+     * @return EntityManagerInterface
+     */
     public function getEntityManager() : EntityManagerInterface
     {
         return $this->core->getEntityManager();
     }
 
+    /**
+     * Determine site
+     *
+     * @param $site
+     * @param $argumentValid
+     * @return Site|null
+     */
     public function determineSite($site, &$argumentValid = null) : ?Site
     {
         if ($site instanceof Site) {
@@ -81,6 +98,14 @@ class Option extends AbstractRepositoryUserDepends
             ->getRepository(Options::class);
     }
 
+    /**
+     * Get batch of options
+     *
+     * @param string $name
+     * @param Site|null $site
+     * @param string ...$optionNames
+     * @return array
+     */
     public function getBatch(
         string $name,
         ?Site &$site = null,
@@ -122,7 +147,7 @@ class Option extends AbstractRepositoryUserDepends
         Site|false|null &$site = false,
         &$siteId = null
     ): ?Options {
-        $site = $site?:null;
+        $site = $this->normalizeSiteId($site);
         $option = $this->get($name, $site, $siteId);
         $siteId = !is_int($siteId) ? null : $siteId;
         if (!$option) {
@@ -134,6 +159,12 @@ class Option extends AbstractRepositoryUserDepends
         return $option;
     }
 
+    /**
+     * Save batch of options
+     *
+     * @param Options ...$option
+     * @return void
+     */
     public function saveBatch(
         Options ...$option
     ): void {
@@ -146,6 +177,8 @@ class Option extends AbstractRepositoryUserDepends
     }
 
     /**
+     * Get option
+     *
      * @param string $name
      * @param Site|null $site
      * @param null $siteId
@@ -166,6 +199,12 @@ class Option extends AbstractRepositoryUserDepends
             ]);
     }
 
+    /**
+     * Save option
+     *
+     * @param Options $options
+     * @return void
+     */
     public function save(Options $options): void
     {
         $em = $options->getEntityManager()??$this->getEntityManager();
@@ -173,6 +212,15 @@ class Option extends AbstractRepositoryUserDepends
         $em->flush();
     }
 
+    /**
+     * Set option
+     *
+     * @param string $name
+     * @param mixed $value
+     * @param bool|null $autoload
+     * @param Site|false|null $site
+     * @return Options
+     */
     public function set(
         string $name,
         mixed $value,
@@ -187,5 +235,51 @@ class Option extends AbstractRepositoryUserDepends
         $this->save($entity);
 
         return $entity;
+    }
+
+    /**
+     * Save deferred
+     *
+     * @param Options $options
+     * @param Options ...$anotherOptions
+     * @return void
+     */
+    public function saveDeferred(Options $options, Options ...$anotherOptions): void
+    {
+        $this->deferred[$options->getName()] = $options;
+        foreach ($anotherOptions as $opt) {
+            $this->deferred[$opt->getName()] = $opt;
+        }
+    }
+
+    /**
+     * Cancel deferred
+     *
+     * @param string ...$names the option name
+     * @return void
+     */
+    public function cancelDeferred(string|Options ...$names): void
+    {
+        if (empty($names)) {
+            $this->deferred = [];
+            return;
+        }
+        foreach ($names as $name) {
+            if ($name instanceof Options) {
+                $name = $name->getName();
+            }
+            unset($this->deferred[$name]);
+        }
+    }
+
+    /**
+     * Commit deferred, save all deferred options
+     *
+     * @return void
+     */
+    public function commitDeferred(): void
+    {
+        $this->saveBatch(...array_values($this->deferred));
+        $this->deferred = [];
     }
 }

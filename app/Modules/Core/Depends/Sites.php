@@ -4,7 +4,9 @@ declare(strict_types=1);
 namespace ArrayAccess\TrayDigita\App\Modules\Core\Depends;
 
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\Site;
+use ArrayAccess\TrayDigita\Collection\Config;
 use ArrayAccess\TrayDigita\Database\Helper\Expression;
+use ArrayAccess\TrayDigita\Util\Filter\ContainerHelper;
 use Doctrine\Common\Collections\Selectable;
 use Doctrine\Persistence\ObjectRepository;
 use function is_string;
@@ -12,6 +14,7 @@ use function strtolower;
 
 class Sites extends AbstractRepositoryUserDepends
 {
+
     private ?bool $multisite = null;
 
     private Site|null|false $site = null;
@@ -35,7 +38,11 @@ class Sites extends AbstractRepositoryUserDepends
         if ($this->multisite !== null) {
             return $this->multisite;
         }
-
+        // enable or disable multisite
+        $config = ContainerHelper::use(Config::class, $this->getContainer())?->get('environment');
+        if ($config instanceof Config && $config->get('disable_multisite', false)) {
+            return $this->multisite = false;
+        }
         /**
          * @var ?\ArrayAccess\TrayDigita\App\Modules\Core\Entities\Options $obj
          * @noinspection PhpFullyQualifiedNameUsageInspection

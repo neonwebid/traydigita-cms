@@ -4,7 +4,9 @@ declare(strict_types=1);
 namespace ArrayAccess\TrayDigita\App\Modules\Core\Traits;
 
 use ArrayAccess\TrayDigita\App\Modules\Core\Factory\CapabilityFactory;
+use ArrayAccess\TrayDigita\Auth\Roles\Interfaces\CapabilityInterface;
 use ArrayAccess\TrayDigita\Auth\Roles\Interfaces\PermissionInterface;
+use ArrayAccess\TrayDigita\Auth\Roles\Interfaces\RoleInterface;
 use ArrayAccess\TrayDigita\Container\Interfaces\SystemContainerInterface;
 use ArrayAccess\TrayDigita\Database\Entities\Interfaces\CapabilityEntityFactoryInterface;
 use ArrayAccess\TrayDigita\Database\Wrapper\PermissionWrapper;
@@ -96,5 +98,19 @@ trait CoreModuleUserPermissiveTrait
         return $permission instanceof PermissionWrapper
             ? $permission
             : $this->permission;
+    }
+
+    /**
+     * @return RoleInterface
+     */
+    abstract public function getRole() : RoleInterface;
+
+    /**
+     * @param string|CapabilityInterface $capability
+     * @return bool
+     */
+    public function permitted(string|CapabilityInterface $capability) : bool
+    {
+        return $this->getPermission()->permitted($this->getRole(), $capability);
     }
 }

@@ -28,6 +28,7 @@ use ArrayAccess\TrayDigita\App\Modules\Core\Traits\CoreModuleUserAuthTrait;
 use ArrayAccess\TrayDigita\App\Modules\Core\Traits\CoreModuleUserDependsTrait;
 use ArrayAccess\TrayDigita\App\Modules\Core\Traits\CoreModuleUserEventTrait;
 use ArrayAccess\TrayDigita\App\Modules\Core\Traits\CoreModuleUserPermissiveTrait;
+use ArrayAccess\TrayDigita\Auth\Roles\AbstractCapability;
 use ArrayAccess\TrayDigita\Database\Connection;
 use ArrayAccess\TrayDigita\Http\ServerRequest;
 use ArrayAccess\TrayDigita\Module\AbstractModule;
@@ -43,6 +44,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use SplFileInfo;
 use Symfony\Component\Finder\Finder;
+use Throwable;
 use function array_flip;
 use function array_map;
 use function strtolower;
@@ -79,7 +81,12 @@ final class Core extends AbstractModule
      */
     private bool $didInit = false;
 
-
+    /**
+     * @var array{
+     *     string: array<string, class-string<\ArrayAccess\TrayDigita\Database\Entities\Abstracts\AbstractEntity>
+     * }
+     * @noinspection PhpFullyQualifiedNameUsageInspection
+     */
     final public const ENTITY_CHECKING = [
         'required' => [
             Admin::class,
@@ -213,7 +220,7 @@ final class Core extends AbstractModule
             function ($key, SplFileInfo $info) use ($directory) {
                 $namespace = __NAMESPACE__ .'\\Middlewares\\';
                 $baseDir = substr($info->getPath(), strlen($directory));
-                $namespace .= str_replace(DIRECTORY_SEPARATOR, '\\', $baseDir);
+                $namespace .= trim(str_replace(DIRECTORY_SEPARATOR, '\\', $baseDir), '\\') .'\\';
                 $className = $namespace . $info->getBasename('.php');
                 if (!class_exists($className)
                     || !is_subclass_of($className, AbstractCoreMiddleware::class)) {
@@ -250,12 +257,53 @@ final class Core extends AbstractModule
             function ($key, SplFileInfo $info) use ($directory, $engine) {
                 $namespace = __NAMESPACE__ .'\\TwigExtensions\\';
                 $baseDir = substr($info->getPath(), strlen($directory));
-                $namespace .= str_replace(DIRECTORY_SEPARATOR, '\\', $baseDir);
+                $namespace .= trim(str_replace(DIRECTORY_SEPARATOR, '\\', $baseDir), '\\') .'\\';
                 $className = $namespace . $info->getBasename('.php');
                 if (!class_exists($className) || !is_subclass_of($className, AbstractExtension::class)) {
                     return;
                 }
                 $engine->addExtension(new $className($engine));
+            }
+        );
+    }
+
+    private function registerCapabilities() : void
+    {
+        $directory = __DIR__ . DIRECTORY_SEPARATOR . 'ACL' . DIRECTORY_SEPARATOR . 'Capabilities';
+        IterableHelper::each(
+            Finder::create()
+                ->in($directory)
+                ->ignoreVCS(true)
+                ->ignoreDotFiles(true)
+                ->depth('<= 10')
+                ->name('/^[_A-za-z]([a-zA-Z0-9]+)?\.php$/')
+                ->files(),
+            function ($key, SplFileInfo $info) use ($directory) {
+                $namespace = __NAMESPACE__ .'\\ACL\\Capabilities\\';
+                $baseDir = substr($info->getPath(), strlen($directory));
+                $namespace .= trim(str_replace(DIRECTORY_SEPARATOR, '\\', $baseDir), '\\') .'\\';
+                $className = $namespace . $info->getBasename('.php');
+                if (!class_exists($className) || !is_subclass_of($className, AbstractCapability::class)) {
+                    return;
+                }
+                try {
+                    $capability = ContainerHelper::resolveCallable($className, $this->getContainer());
+                    if (!$capability instanceof AbstractCapability) {
+                        return;
+                    }
+                    // do replace
+                    $caps = $this->getPermission()->get($capability)?->getRoles() ?? [];
+                    $capability = $this->getPermission()->replace($capability);
+                    foreach ($capability->getRoles() as $role) {
+                        $capability->add($role);
+                    }
+                    // add role from database
+                    foreach ($caps as $role) {
+                        $capability->add($role);
+                    }
+                } catch (Throwable) {
+                    return;
+                }
             }
         );
     }
@@ -272,10 +320,10 @@ final class Core extends AbstractModule
         $this->didInit = true;
         $this->registerMiddlewares();
         $this->registerTwigExtensions();
+        $this->registerCapabilities(); // static capability
         if ($this->getKernel()->getConfigError()) {
             return;
         }
-
         $this->getConnection()->registerEntityDirectory(__DIR__ . '/Entities');
         $this->getManager()->attachOnce('view.beforeRender', [$this, 'eventViewBeforeRender']);
         $this->getManager()->attachOnce('view.bodyAttributes', [$this, 'eventViewBodyAttributes']);

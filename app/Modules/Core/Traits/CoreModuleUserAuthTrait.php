@@ -3,11 +3,13 @@ declare(strict_types=1);
 
 namespace ArrayAccess\TrayDigita\App\Modules\Core\Traits;
 
+use ArrayAccess\TrayDigita\App\Modules\Core\ACL\Roles\Commons\Guess;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\Admin;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\User;
 use ArrayAccess\TrayDigita\App\Modules\Core\Factory\AdminEntityFactory;
 use ArrayAccess\TrayDigita\App\Modules\Core\Factory\UserEntityFactory;
 use ArrayAccess\TrayDigita\Auth\Cookie\UserAuth;
+use ArrayAccess\TrayDigita\Auth\Roles\Interfaces\RoleInterface;
 use ArrayAccess\TrayDigita\Collection\Config;
 use ArrayAccess\TrayDigita\Container\Interfaces\SystemContainerInterface;
 use ArrayAccess\TrayDigita\Database\Entities\Abstracts\AbstractUser;
@@ -34,6 +36,11 @@ use const FILTER_VALIDATE_DOMAIN;
 trait CoreModuleUserAuthTrait
 {
     use CoreModuleAssertionTrait;
+
+    /**
+     * @var Guess|null $guessRole
+     */
+    private ?Guess $guessRole = null;
 
     public const ADMIN_MODE = 'admin';
 
@@ -136,14 +143,19 @@ trait CoreModuleUserAuthTrait
         $userCookie  = $cookieParams[$cookieNames[self::USER_MODE]['name']]??null;
         $userCookie = is_string($userCookie) ? $userCookie : null;
 
-        $this->userAccount = $userCookie ? $userAuth->getUser(
-            $userCookie,
-            $this->getUserEntityFactory()
-        ) : null;
-        $this->adminAccount = $adminCookie ? $userAuth->getUser(
-            $adminCookie,
-            $this->getAdminEntityFactory()
-        ) : null;
+        $this->setUserAccount(
+            $userCookie ? $userAuth->getUser(
+                $userCookie,
+                $this->getUserEntityFactory()
+            ) : null
+        );
+        $this->setAdminAccount(
+            $adminCookie ? $userAuth->getUser(
+                $adminCookie,
+                $this->getAdminEntityFactory()
+            ) : null
+        );
+
         return $this;
     }
 
@@ -165,17 +177,23 @@ trait CoreModuleUserAuthTrait
             }
             return $this;
         }
-        if (!$hasUserEntity) {
-            $container->set(
-                UserEntityFactory::class,
-                fn() => ContainerHelper::resolveCallable(UserEntityFactory::class, $container)
-            );
+        if (!$hasUserEntity && method_exists($container, 'set')) {
+            try {
+                $container->set(
+                    UserEntityFactory::class,
+                    fn() => ContainerHelper::resolveCallable(UserEntityFactory::class, $container)
+                );
+            } catch (Throwable $e) {
+            }
         }
-        if (!$hasAdminEntity) {
-            $container->set(
-                AdminEntityFactory::class,
-                fn() => ContainerHelper::resolveCallable(AdminEntityFactory::class, $container)
-            );
+        if (!$hasAdminEntity && method_exists($container, 'set')) {
+            try {
+                $container->set(
+                    AdminEntityFactory::class,
+                    fn() => ContainerHelper::resolveCallable(AdminEntityFactory::class, $container)
+                );
+            } catch (Throwable $e) {
+            }
         }
         return $this;
     }
@@ -215,7 +233,27 @@ trait CoreModuleUserAuthTrait
 
     public function setAsUserMode(): void
     {
-        $this->currentMode = self::ADMIN_MODE;
+        $this->currentMode = self::USER_MODE;
+    }
+
+    /**
+     * @param Admin|null $admin
+     * @return $this
+     */
+    public function setAdminAccount(?Admin $admin): static
+    {
+        $this->adminAccount = $admin;
+        return $this;
+    }
+
+    /**
+     * @param User|null $user
+     * @return $this
+     */
+    public function setUserAccount(?User $user): static
+    {
+        $this->userAccount = $user;
+        return $this;
     }
 
     public function getCurrentMode(): string
@@ -239,6 +277,15 @@ trait CoreModuleUserAuthTrait
             self::USER_MODE => $this->getUserAccount(),
             default => null
         };
+    }
+
+    public function getRole() : RoleInterface
+    {
+        $role = $this->getAccount()?->getObjectRole();
+        if (!$role) {
+            $role = ($this->guessRole ??= new Guess());
+        }
+        return $role;
     }
 
     public function getUserAccount(): ?User

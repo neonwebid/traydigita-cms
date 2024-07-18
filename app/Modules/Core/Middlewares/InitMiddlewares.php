@@ -252,7 +252,7 @@ class InitMiddlewares extends AbstractCoreMiddleware
             ) {
                 return null;
             }
-        } catch (Throwable $e) {
+        } catch (Throwable) {
             return null;
         }
         $this->serveFromCache = true;
