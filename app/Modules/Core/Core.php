@@ -23,15 +23,20 @@ use ArrayAccess\TrayDigita\App\Modules\Core\Entities\UserTerm;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\UserTermGroup;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\UserTermGroupMeta;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\UserTermMeta;
+use ArrayAccess\TrayDigita\App\Modules\Core\Static\CoreModule;
 use ArrayAccess\TrayDigita\App\Modules\Core\Traits\CoreModuleTemplatesTrait;
 use ArrayAccess\TrayDigita\App\Modules\Core\Traits\CoreModuleUserAuthTrait;
 use ArrayAccess\TrayDigita\App\Modules\Core\Traits\CoreModuleUserDependsTrait;
 use ArrayAccess\TrayDigita\App\Modules\Core\Traits\CoreModuleUserEventTrait;
 use ArrayAccess\TrayDigita\App\Modules\Core\Traits\CoreModuleUserPermissiveTrait;
 use ArrayAccess\TrayDigita\Auth\Roles\AbstractCapability;
+use ArrayAccess\TrayDigita\Container\Interfaces\ContainerIndicateInterface;
 use ArrayAccess\TrayDigita\Database\Connection;
+use ArrayAccess\TrayDigita\Event\Interfaces\ManagerIndicateInterface;
 use ArrayAccess\TrayDigita\Http\ServerRequest;
-use ArrayAccess\TrayDigita\Module\AbstractModule;
+use ArrayAccess\TrayDigita\Module\Interfaces\ModuleInterface;
+use ArrayAccess\TrayDigita\Module\Modules;
+use ArrayAccess\TrayDigita\Module\Traits\ModuleTrait;
 use ArrayAccess\TrayDigita\Traits\Database\ConnectionTrait;
 use ArrayAccess\TrayDigita\Traits\Service\TranslatorTrait;
 use ArrayAccess\TrayDigita\Traits\View\ViewTrait;
@@ -50,8 +55,10 @@ use function array_map;
 use function strtolower;
 use const PHP_INT_MIN;
 
-final class Core extends AbstractModule
+final class Core implements ModuleInterface, ContainerIndicateInterface, ManagerIndicateInterface
 {
+    use ModuleTrait;
+
     use TranslatorTrait,
         ViewTrait,
         CoreModuleUserDependsTrait,
@@ -60,21 +67,6 @@ final class Core extends AbstractModule
         CoreModuleUserEventTrait,
         CoreModuleUserAuthTrait,
         CoreModuleUserPermissiveTrait;
-
-    /**
-     * @var string
-     */
-    protected string $name = 'Core';
-
-    /**
-     * @var bool
-     */
-    protected bool $important = true;
-
-    /**
-     * @var int -> very important
-     */
-    protected int $priority = PHP_INT_MIN;
 
     /**
      * @var bool
@@ -140,6 +132,25 @@ final class Core extends AbstractModule
      * @var bool $middlewareRegistered
      */
     private bool $middlewareRegistered = false;
+
+    final public function __construct(public readonly Modules $modules)
+    {
+        if (!$this->modules->has($this)) {
+            $this->modules->attach($this);
+        }
+        $this->important = true;
+        $this->priority = PHP_INT_MIN;
+        $this->name = 'Core';
+        // set core
+        CoreModule::setCore($this);
+        // lock core
+        CoreModule::lockCore();
+    }
+
+    final public function isCore(): bool
+    {
+        return true;
+    }
 
     /**
      * @inheritdoc

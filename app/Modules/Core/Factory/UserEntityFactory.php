@@ -29,4 +29,12 @@ class UserEntityFactory implements UserEntityFactoryInterface
             ['username' => $username]
         );
     }
+
+    public function findByEmail(string $email) : ?UserEntityInterface
+    {
+        return $this->connection->findOneBy(
+            User::class,
+            ['email' => $email]
+        );
+    }
 }

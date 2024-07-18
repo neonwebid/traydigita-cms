@@ -29,4 +29,12 @@ class AdminEntityFactory implements UserEntityFactoryInterface
             ['username' => $username]
         );
     }
+
+    public function findByEmail(string $email) : ?UserEntityInterface
+    {
+        return $this->connection->findOneBy(
+            Admin::class,
+            ['email' => $email]
+        );
+    }
 }
