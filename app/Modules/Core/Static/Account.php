@@ -23,25 +23,25 @@ final class Account
 
     public static function findByUsername(string $username): ?UserEntityInterface
     {
-        $mode = static::getUserMode();
+        $mode = self::getUserMode();
         return $mode ? $mode::findByUsername($username) : null;
     }
 
     public static function findByEmail(string $email): ?UserEntityInterface
     {
-        $mode = static::getUserMode();
+        $mode = self::getUserMode();
         return $mode ? $mode::findByEmail($email) : null;
     }
 
     public static function findById(int $id): ?UserEntityInterface
     {
-        $mode = static::getUserMode();
+        $mode = self::getUserMode();
         return $mode ? $mode::findById($id) : null;
     }
 
     public static function findByUsernameOrEmail(string $usernameOrEmail): ?UserEntityInterface
     {
-        $mode = static::getUserMode();
+        $mode = self::getUserMode();
         return $mode ? $mode::findByUsernameOrEmail($usernameOrEmail) : null;
     }
 }
