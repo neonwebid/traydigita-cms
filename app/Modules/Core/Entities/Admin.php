@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace ArrayAccess\TrayDigita\App\Modules\Core\Entities;
 
+use ArrayAccess\TrayDigita\App\Modules\Core\Static\CoreModule;
+use ArrayAccess\TrayDigita\App\Modules\Core\Static\RoleStatic;
+use ArrayAccess\TrayDigita\Auth\Roles\Interfaces\CapabilityInterface;
+use ArrayAccess\TrayDigita\Auth\Roles\Interfaces\RoleInterface;
 use ArrayAccess\TrayDigita\Database\Entities\Abstracts\AbstractUser;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping\Column;
@@ -155,6 +159,7 @@ class Admin extends AbstractUser
     ]
     protected ?Attachment $attachment = null;
 
+    /*
     #[
         JoinColumn(
             name: 'role',
@@ -174,8 +179,8 @@ class Admin extends AbstractUser
             ],
             fetch: 'LAZY'
         )
-    ]
-    protected ?Role $roleObject = null;
+    ]*/
+    protected ?RoleInterface $objectRole = null;
 
     public function getSiteId(): ?int
     {
@@ -198,22 +203,22 @@ class Admin extends AbstractUser
         $this->setSiteId($site?->getId());
     }
 
-    public function getObjectRole(): Role
+    public function getObjectRole(): RoleInterface
     {
-        if (!$this->roleObject) {
-            $this->roleObject = new Role();
-            $this->roleObject->setIdentity($this->getRole());
-            $this->roleObject->setName($this->getRole());
+        /*if (!$this->objectRole) {
+            $this->objectRole = new Role();
+            $this->objectRole->setIdentity($this->getRole());
+            $this->objectRole->setName($this->getRole());
             $entity = $this->getEntityManager();
-            $entity && $this->roleObject->setEntityManager($entity);
-        }
-        return $this->roleObject;
+            $entity && $this->objectRole->setEntityManager($entity);
+        }*/
+        return $this->objectRole ??= RoleStatic::find($this);
     }
 
-    public function setRoleObject(Role $roleObject): void
+    public function setObjectRole(Role $objectRole): void
     {
-        $this->roleObject = $roleObject;
-        $this->setRole($roleObject->getIdentity());
+        $this->objectRole = $objectRole;
+        $this->setRole($objectRole->getIdentity());
     }
 
     public function getAttachment(): ?Attachment
@@ -225,5 +230,14 @@ class Admin extends AbstractUser
     {
         $this->attachment = $attachment;
         $this->setAttachmentId($attachment?->getId());
+    }
+
+    /**
+     * @param string|CapabilityInterface $capability
+     * @return bool
+     */
+    public function permitted(string|CapabilityInterface $capability): bool
+    {
+        return CoreModule::getCore()?->permitted($capability, $this) === true;
     }
 }

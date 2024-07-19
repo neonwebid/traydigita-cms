@@ -74,18 +74,7 @@ class InitMiddlewares extends AbstractCoreMiddleware
      */
     protected function filterPath(string $path): string
     {
-        if (str_contains($path, '?')) {
-            $path = explode('?', $path)[0];
-        }
-        if (str_contains($path, '#')) {
-            $path = explode('#', $path)[0];
-        }
-
-        $path = DataNormalizer::normalizeUnixDirectorySeparator($path);
-        $path = preg_replace('~[^a-z0-9/_-]~', '', strtolower($path));
-        $path = trim(preg_replace('~/+~', '/', $path), '/');
-        $path = trim(preg_replace('~/+~', '/', $path), '/');
-        return $path ? "/$path" : '';
+        return $this->core->filterUriPath($path);
     }
 
     /**
@@ -96,9 +85,22 @@ class InitMiddlewares extends AbstractCoreMiddleware
      */
     public function isNeedToCache(?ServerRequestInterface $request): bool
     {
+        $request ??= $this->core->getRequest();
+        $path = $this->filterPath($request->getUri()->getPath());
+        if ($path === User::path() || str_starts_with($path, User::path() . '/')) {
+            if (!$this->core->getCurrentSetMode()) {
+                $this->core->setAsUserMode();
+            }
+            return false;
+        }
+        if ($path === Dashboard::path() || str_starts_with($path, Dashboard::path() . '/')) {
+            if (!$this->core->getCurrentSetMode()) {
+                $this->core->setAsAdminMode();
+            }
+            return false;
+        }
         // should GET
-        if (!$request
-            || $this->debug
+        if ($this->debug
             || $this->serveFromCache
             || !$this->cacheKey
             || $this->isMemberOrUser
@@ -143,10 +145,6 @@ class InitMiddlewares extends AbstractCoreMiddleware
         }
         $this->cache404 = $env->get('cache_404') === true;
         $this->showDebugBar = $env->get('profiling') === true && $env->get('debugBar') === true;
-        // should GET
-        if ($request->getMethod() !== 'GET') {
-            return $request;
-        }
         $path = DataNormalizer::normalizeUnixDirectorySeparator($request->getUri()->getPath());
         $dashboardPath = Dashboard::prefix();
         $userPath = User::prefix();
@@ -155,11 +153,11 @@ class InitMiddlewares extends AbstractCoreMiddleware
             || str_starts_with($path, $dashboardPath . '/')
             || str_starts_with($path, $userPath . '/');
         $this->cacheKey = 'server_cache_' . sha1($request->getUri()->getPath());
+        $this->debug = $env->get('debug') === true;
         // disable cache for dashboard and user
         if (!$this->isNeedToCache($request)) {
             return $request;
         }
-        $this->debug = $env->get('debug') === true;
         // no cache
         if ($this->debug) {
             return $request;

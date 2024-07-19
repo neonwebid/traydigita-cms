@@ -3,12 +3,12 @@ declare(strict_types=1);
 
 namespace ArrayAccess\TrayDigita\App\Modules\Core\ACL\Traits;
 
+use ArrayAccess\TrayDigita\Auth\Roles\Interfaces\CapabilityInterface;
 use ArrayAccess\TrayDigita\Auth\Roles\Interfaces\PermissionInterface;
 use ArrayAccess\TrayDigita\Auth\Roles\Interfaces\RoleInterface;
 use ArrayAccess\TrayDigita\Auth\Roles\SuperAdminCapability;
 use ArrayAccess\TrayDigita\Auth\Roles\SuperAdminRole;
 use ArrayAccess\TrayDigita\Traits\Container\ContainerAllocatorTrait;
-use ArrayAccess\TrayDigita\Util\Filter\Consolidation;
 use ArrayAccess\TrayDigita\Util\Filter\ContainerHelper;
 use Throwable;
 
@@ -33,7 +33,8 @@ trait CapabilityRegistrationTrait
      */
     protected function onConstruct() : void
     {
-        if ($this->constructedRegister) {
+        /** @noinspection PhpInstanceofIsAlwaysTrueInspection */
+        if ($this->constructedRegister || !$this instanceof CapabilityInterface) {
             return;
         }
         $this->constructedRegister = true;
@@ -70,10 +71,5 @@ trait CapabilityRegistrationTrait
                 $this->add($role);
             }
         }
-    }
-
-    public function __debugInfo(): ?array
-    {
-        return Consolidation::debugInfo($this, excludeKeys: ['roles']);
     }
 }

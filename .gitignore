@@ -7,7 +7,6 @@
 .VolumeIcon.icns
 .DS_Store
 
-
 # Windows Installer files
 *.cab
 *.msi
@@ -97,18 +96,28 @@ node_modules/
 
 # IGNORE ENVIRONMENT
 .env
+
+# IGNORE configuration
 config.php
 .config.php
-# ignore php ini user
+
+# IGNORE php ini user
 .user.ini
 
+# IGNORE public
 /public/*
 !/public/index.php
 !/public/.htaccess
 !/public/templates/
 
-!/storage/README.md
+# IGNORE data
 /data/*
 !/data/README.md
-/storage/*
 
+# IGNORE storage
+/storage/*
+!/storage/README.md
+
+# IGNORE preloaded files
+/preload-index.php
+/preload-core.php

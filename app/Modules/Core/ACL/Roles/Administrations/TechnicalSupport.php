@@ -3,9 +3,9 @@ declare(strict_types=1);
 
 namespace ArrayAccess\TrayDigita\App\Modules\Core\ACL\Roles\Administrations;
 
-use ArrayAccess\TrayDigita\Auth\Roles\AbstractRole;
+use ArrayAccess\TrayDigita\App\Modules\Core\Abstracts\ACL\AbstractAdminRole;
 
-class TechnicalSupport extends AbstractRole
+class TechnicalSupport extends AbstractAdminRole
 {
     protected string $name = 'Technical Support';
 

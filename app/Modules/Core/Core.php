@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace ArrayAccess\TrayDigita\App\Modules\Core;
 
 use ArrayAccess\TrayDigita\App\Modules\Core\Abstracts\AbstractCoreMiddleware;
+use ArrayAccess\TrayDigita\App\Modules\Core\Abstracts\AbstractCoreTwigExtension;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\Admin;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\AdminLog;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\AdminMeta;
@@ -41,12 +42,13 @@ use ArrayAccess\TrayDigita\Traits\Database\ConnectionTrait;
 use ArrayAccess\TrayDigita\Traits\Service\TranslatorTrait;
 use ArrayAccess\TrayDigita\Traits\View\ViewTrait;
 use ArrayAccess\TrayDigita\Util\Filter\ContainerHelper;
+use ArrayAccess\TrayDigita\Util\Filter\DataNormalizer;
 use ArrayAccess\TrayDigita\Util\Filter\IterableHelper;
 use ArrayAccess\TrayDigita\View\Engines\TwigEngine;
-use ArrayAccess\TrayDigita\View\Twig\TwigExtensions\AbstractExtension;
 use Psr\Http\Message\ServerRequestFactoryInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamFactoryInterface;
+use Psr\Http\Message\UriInterface;
 use SplFileInfo;
 use Symfony\Component\Finder\Finder;
 use Throwable;
@@ -71,7 +73,7 @@ final class Core implements ModuleInterface, ContainerIndicateInterface, Manager
     /**
      * @var bool
      */
-    private bool $didInit = false;
+    private readonly bool $didInit;
 
     /**
      * @var array{
@@ -150,6 +152,32 @@ final class Core implements ModuleInterface, ContainerIndicateInterface, Manager
     final public function isCore(): bool
     {
         return true;
+    }
+
+    /**
+     * Filter path of dashboard and user
+     *
+     * @param string|ServerRequestInterface|UriInterface|null $path default null as request
+     * @return string
+     */
+    public function filterUriPath(string|ServerRequestInterface|UriInterface|null $path = null): string
+    {
+        $path ??= $this->getRequest();
+        $path = $path instanceof ServerRequestInterface
+            ? $path->getUri()->getPath()
+            : ($path instanceof UriInterface ? $path->getPath() : $path);
+        if (str_contains($path, '?')) {
+            $path = explode('?', $path)[0];
+        }
+        if (str_contains($path, '#')) {
+            $path = explode('#', $path)[0];
+        }
+
+        $path = DataNormalizer::normalizeUnixDirectorySeparator($path);
+        $path = preg_replace('~[^a-z0-9/_-]~', '', strtolower($path));
+        $path = trim(preg_replace('~/+~', '/', $path), '/');
+        $path = trim(preg_replace('~/+~', '/', $path), '/');
+        return $path ? "/$path" : '';
     }
 
     /**
@@ -270,10 +298,12 @@ final class Core implements ModuleInterface, ContainerIndicateInterface, Manager
                 $baseDir = substr($info->getPath(), strlen($directory));
                 $namespace .= trim(str_replace(DIRECTORY_SEPARATOR, '\\', $baseDir), '\\') .'\\';
                 $className = $namespace . $info->getBasename('.php');
-                if (!class_exists($className) || !is_subclass_of($className, AbstractExtension::class)) {
+                if (!class_exists($className)
+                    || !is_subclass_of($className, AbstractCoreTwigExtension::class)
+                ) {
                     return;
                 }
-                $engine->addExtension(new $className($engine));
+                $engine->addExtension(new $className($engine, $this));
             }
         );
     }
@@ -324,17 +354,28 @@ final class Core implements ModuleInterface, ContainerIndicateInterface, Manager
      */
     protected function doInit(): void
     {
-        if ($this->didInit) {
+        if (isset($this->didInit)) {
             return;
         }
 
         $this->didInit = true;
-        $this->registerMiddlewares();
+        // load preload core
+        if (file_exists($this->getKernel()->getRootDirectory() .'/preload-core.php')
+            && is_file($this->getKernel()->getRootDirectory() .'/preload-core.php')
+        ) {
+            (function () {
+                require $this->getKernel()->getRootDirectory() . '/preload-core.php';
+            })();
+        }
+
         $this->registerTwigExtensions();
         $this->registerCapabilities(); // static capability
+        $this->registerMiddlewares();
+        // if there is an error, do not continue
         if ($this->getKernel()->getConfigError()) {
             return;
         }
+
         $this->getConnection()->registerEntityDirectory(__DIR__ . '/Entities');
         $this->getManager()->attachOnce('view.beforeRender', [$this, 'eventViewBeforeRender']);
         $this->getManager()->attachOnce('view.bodyAttributes', [$this, 'eventViewBodyAttributes']);

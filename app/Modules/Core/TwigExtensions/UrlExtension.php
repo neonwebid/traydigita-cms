@@ -3,19 +3,14 @@ declare(strict_types=1);
 
 namespace ArrayAccess\TrayDigita\App\Modules\Core\TwigExtensions;
 
+use ArrayAccess\TrayDigita\App\Modules\Core\Abstracts\AbstractCoreTwigExtension;
 use ArrayAccess\TrayDigita\App\Modules\Core\Route\Attributes\DashboardAPI;
 use ArrayAccess\TrayDigita\App\Modules\Core\Route\Attributes\RouteAPI;
 use ArrayAccess\TrayDigita\App\Modules\Core\Route\Attributes\UserAPI;
-use ArrayAccess\TrayDigita\View\Engines\TwigEngine;
-use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
-class UrlExtension extends AbstractExtension
+class UrlExtension extends AbstractCoreTwigExtension
 {
-    public function __construct(public readonly TwigEngine $engine)
-    {
-    }
-
     public function getFunctions(): array
     {
         return [

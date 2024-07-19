@@ -3,7 +3,9 @@ declare(strict_types=1);
 
 namespace ArrayAccess\TrayDigita\App\Modules\Core\Entities;
 
-use ArrayAccess\TrayDigita\Auth\Roles\InstanceRole;
+use ArrayAccess\TrayDigita\App\Modules\Core\Static\CoreModule;
+use ArrayAccess\TrayDigita\App\Modules\Core\Static\RoleStatic;
+use ArrayAccess\TrayDigita\Auth\Roles\Interfaces\CapabilityInterface;
 use ArrayAccess\TrayDigita\Auth\Roles\Interfaces\RoleInterface;
 use ArrayAccess\TrayDigita\Database\Entities\Abstracts\AbstractUser;
 use DateTimeInterface;
@@ -203,7 +205,7 @@ class User extends AbstractUser
     ]
     protected ?UserAttachment $attachment = null;
 
-    #[
+    /*#[
         JoinColumn(
             name: 'role',
             referencedColumnName: 'identity',
@@ -222,8 +224,8 @@ class User extends AbstractUser
             ],
             fetch: 'EAGER'
         )
-    ]
-    protected ?RoleInterface $roleObject = null;
+    ]*/
+    protected ?RoleInterface $objectRole = null;
 
     public function getSiteId(): ?int
     {
@@ -248,27 +250,27 @@ class User extends AbstractUser
 
     public function getObjectRole(): RoleInterface
     {
-        if (!$this->roleObject) {
+        /*if (!$this->roleObject) {
             $role = $this->getRole();
             if (trim($role) !== '') {
-                $this->roleObject = new Role();
-                $this->roleObject->setIdentity($this->getRole());
-                $this->roleObject->setName($this->getRole());
+                $this->objectRole = new Role();
+                $this->objectRole->setIdentity($this->getRole());
+                $this->objectRole->setName($this->getRole());
                 $entity = $this->getEntityManager();
-                $entity && $this->roleObject->setEntityManager($entity);
+                $entity && $this->objectRole->setEntityManager($entity);
             } else {
                 $instanceRole = InstanceRole::create(self::UNKNOWN, self::UNKNOWN);
                 $role = $this->getManager()?->dispatch('entity.emptyRole', $instanceRole);
-                $this->roleObject = $role instanceof RoleInterface ? $role : $instanceRole;
+                $this->objectRole = $role instanceof RoleInterface ? $role : $instanceRole;
             }
-        }
-        return $this->roleObject;
+        }*/
+        return $this->objectRole ??= RoleStatic::find($this);
     }
 
-    public function setRoleObject(Role $roleObject): void
+    public function setObjectRole(RoleInterface $objectRole): void
     {
-        $this->roleObject = $roleObject;
-        $this->setRole($roleObject->getIdentity());
+        $this->objectRole = $objectRole;
+        $this->setRole($objectRole->getIdentity());
     }
 
     public function getRelatedUserId(): ?int
@@ -367,5 +369,14 @@ class User extends AbstractUser
                 ->setParameter('updated_at', $date);
             $q->getQuery()->execute();
         }
+    }
+
+    /**
+     * @param string|CapabilityInterface $capability
+     * @return bool
+     */
+    public function permitted(string|CapabilityInterface $capability): bool
+    {
+        return CoreModule::getCore()?->permitted($capability, $this) === true;
     }
 }

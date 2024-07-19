@@ -3,11 +3,12 @@ declare(strict_types=1);
 
 namespace ArrayAccess\TrayDigita\App\Modules\Core\Traits;
 
-use ArrayAccess\TrayDigita\App\Modules\Core\ACL\Roles\Commons\Guess;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\Admin;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\User;
 use ArrayAccess\TrayDigita\App\Modules\Core\Factory\AdminEntityFactory;
 use ArrayAccess\TrayDigita\App\Modules\Core\Factory\UserEntityFactory;
+use ArrayAccess\TrayDigita\App\Modules\Core\Route\Attributes\User as UserDashboard;
+use ArrayAccess\TrayDigita\App\Modules\Core\Static\RoleStatic;
 use ArrayAccess\TrayDigita\Auth\Cookie\UserAuth;
 use ArrayAccess\TrayDigita\Auth\Roles\Interfaces\RoleInterface;
 use ArrayAccess\TrayDigita\Collection\Config;
@@ -23,6 +24,7 @@ use ArrayAccess\TrayDigita\Util\Filter\DataNormalizer;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamFactoryInterface;
+use Psr\Http\Message\UriInterface;
 use Throwable;
 use function filter_var;
 use function is_numeric;
@@ -38,12 +40,22 @@ trait CoreModuleUserAuthTrait
     use CoreModuleAssertionTrait;
 
     /**
-     * @var Guess|null $guessRole
+     * @var ?RoleInterface $defaultRole
      */
-    private ?Guess $guessRole = null;
+    private ?RoleInterface $defaultRole = null;
 
+    /**
+     * Admin mode
+     *
+     * @var "admin"
+     */
     public const ADMIN_MODE = 'admin';
 
+    /**
+     * User mode
+     *
+     * @var "user"
+     */
     public const USER_MODE = 'user';
 
     private array $cookieNames = [
@@ -65,11 +77,16 @@ trait CoreModuleUserAuthTrait
 
     private bool $authProcessed = false;
 
-    private string $currentMode = self::ADMIN_MODE;
+    /**
+     * @var string|null $currentMode
+     */
+    private ?string $currentMode = null;
+
+    private string $defaultMode = self::ADMIN_MODE;
 
     private bool $cookieResolved = false;
 
-    private function resolveCookieName(): self
+    private function resolveCookieName(): static
     {
         if ($this->cookieResolved) {
             return $this;
@@ -118,7 +135,11 @@ trait CoreModuleUserAuthTrait
         return $this->authProcessed;
     }
 
-    private function doProcessAuth(): self
+    /**
+     * Do process auth
+     * @return $this
+     */
+    private function doProcessAuth(): static
     {
         if (!$this->request || $this->authProcessed) {
             return $this;
@@ -159,7 +180,7 @@ trait CoreModuleUserAuthTrait
         return $this;
     }
 
-    private function createEntityFactoryContainer(): self
+    private function createEntityFactoryContainer(): static
     {
         $this->assertObjectCoreModule();
         $container = $this->getContainer();
@@ -192,7 +213,7 @@ trait CoreModuleUserAuthTrait
                     AdminEntityFactory::class,
                     fn() => ContainerHelper::resolveCallable(AdminEntityFactory::class, $container)
                 );
-            } catch (Throwable $e) {
+            } catch (Throwable) {
             }
         }
         return $this;
@@ -247,7 +268,7 @@ trait CoreModuleUserAuthTrait
     }
 
     /**
-     * @param User|null $user
+     * @param ?User $user
      * @return $this
      */
     public function setUserAccount(?User $user): static
@@ -256,20 +277,95 @@ trait CoreModuleUserAuthTrait
         return $this;
     }
 
+    /**
+     * Filter uri path
+     *
+     * @param string|ServerRequestInterface|UriInterface|null $path default null as request uri path
+     * @return string
+     */
+    abstract public function filterUriPath(string|ServerRequestInterface|UriInterface|null $path = null): string;
+
+    /**
+     * @return string<self::USER_MODE|self::ADMIN_MODE>
+     */
     public function getCurrentMode(): string
+    {
+        if (!$this->currentMode) {
+            $path = $this->filterUriPath($this->request);
+            if ($path === UserDashboard::prefix() || str_starts_with($path, UserDashboard::prefix().'/')) {
+                $this->setAsUserMode();
+            } else {
+                $this->setAsAdminMode();
+            }
+        }
+
+        return $this->currentMode??$this->getDefaultMode();
+    }
+
+    /**
+     * Check if current mode is admin mode
+     *
+     * @return bool
+     */
+    public function isAdminMode(): bool
+    {
+        return $this->getCurrentMode() === self::ADMIN_MODE;
+    }
+
+    /**
+     * Check if current mode is user mode
+     *
+     * @return bool
+     */
+    public function isUserMode(): bool
+    {
+        return $this->getCurrentMode() === self::USER_MODE;
+    }
+
+    /**
+     * @return self::USER_MODE|self::ADMIN_MODE|null
+     */
+    public function getCurrentSetMode(): ?string
     {
         return $this->currentMode;
     }
 
-    public function isLoggedIn() : bool
+    /**
+     * @return self::USER_MODE|self::ADMIN_MODE
+     */
+    public function getDefaultMode(): string
     {
-        return match ($this->getCurrentMode()) {
-            self::ADMIN_MODE => $this->isAdminLoggedIn(),
-            self::USER_MODE => $this->isUserLoggedIn(),
-            default => false
-        };
+        return $this->getDefaultMode();
     }
 
+    /**
+     * Set default mode
+     *
+     * @param string<"user"|"admin"> $mode
+     * @return void
+     * @uses self::USER_MODE
+     * @uses self::ADMIN_MODE
+     */
+    public function setDefaultMode(string $mode): void
+    {
+        if ($mode === self::ADMIN_MODE || $mode === self::USER_MODE) {
+            $this->defaultMode = $mode;
+        }
+    }
+
+    /**
+     * @return bool
+     */
+    public function isLoggedIn() : bool
+    {
+        return $this->getAccount() !== null;
+    }
+
+    /**
+     * Get account
+     *
+     * @return User|Admin|null
+     */
     public function getAccount() : User|Admin|null
     {
         return match ($this->getCurrentMode()) {
@@ -279,20 +375,42 @@ trait CoreModuleUserAuthTrait
         };
     }
 
+    /**
+     * @return Admin|User|null
+     */
+    public function getUserOrAdminAccountLoggedIn(): Admin|User|null
+    {
+        if ($this->isUserMode()) {
+            return $this->getUserAccount();
+        }
+        return $this->getAdminAccount();
+    }
+
+    /**
+     * Get role
+     *
+     * @return RoleInterface
+     */
     public function getRole() : RoleInterface
     {
         $role = $this->getAccount()?->getObjectRole();
         if (!$role) {
-            $role = ($this->guessRole ??= new Guess());
+            $role = ($this->defaultRole ??= RoleStatic::getUnknownRole());
         }
         return $role;
     }
 
+    /**
+     * @return ?User
+     */
     public function getUserAccount(): ?User
     {
         return $this->doProcessAuth()->userAccount;
     }
 
+    /**
+     * @return ?Admin
+     */
     public function getAdminAccount(): ?Admin
     {
         return $this->doProcessAuth()->adminAccount;
@@ -302,7 +420,7 @@ trait CoreModuleUserAuthTrait
      * @return array{
      *      user: array{name:string, lifetime: int, wildcard: bool},
      *      admin: array{name:string, lifetime: int, wildcard: bool}
-     *     }
+     * }
      */
     public function getCookieNames(): array
     {
@@ -410,6 +528,15 @@ trait CoreModuleUserAuthTrait
     }
 
     /**
+     * @param string $email
+     * @return ?UserEntityInterface
+     */
+    public function getAdminByEmail(string $email): ?UserEntityInterface
+    {
+        return $this->getAdminEntityFactory()->findByEmail($email);
+    }
+
+    /**
      * @param int $id
      * @return ?User
      */
@@ -425,5 +552,14 @@ trait CoreModuleUserAuthTrait
     public function getUserByUsername(string $username) : ?UserEntityInterface
     {
         return $this->getUserEntityFactory()->findByUsername($username);
+    }
+
+    /**
+     * @param string $email
+     * @return ?UserEntityInterface
+     */
+    public function getUserByEmail(string $email) : ?UserEntityInterface
+    {
+        return $this->getUserEntityFactory()->findByEmail($email);
     }
 }

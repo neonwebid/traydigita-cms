@@ -3,21 +3,17 @@ declare(strict_types=1);
 
 namespace ArrayAccess\TrayDigita\App\Modules\Core\ACL\Capabilities\MemberArea;
 
+use ArrayAccess\TrayDigita\App\Modules\Core\Abstracts\ACL\AbstractUserCapability;
 use ArrayAccess\TrayDigita\App\Modules\Core\ACL\Roles\Administrations\Admin;
 use ArrayAccess\TrayDigita\App\Modules\Core\ACL\Roles\Administrations\Author;
+use ArrayAccess\TrayDigita\App\Modules\Core\ACL\Roles\Administrations\Contributor;
 use ArrayAccess\TrayDigita\App\Modules\Core\ACL\Roles\Administrations\Editor;
-use ArrayAccess\TrayDigita\App\Modules\Core\ACL\Roles\Commons\Contributor;
-use ArrayAccess\TrayDigita\App\Modules\Core\ACL\Roles\Commons\User;
-use ArrayAccess\TrayDigita\App\Modules\Core\ACL\Traits\CapabilityRegistrationTrait;
-use ArrayAccess\TrayDigita\Auth\Roles\AbstractCapability;
+use ArrayAccess\TrayDigita\App\Modules\Core\ACL\Roles\Users\User;
 use ArrayAccess\TrayDigita\Auth\Roles\SuperAdminRole;
-use ArrayAccess\TrayDigita\Container\Interfaces\ContainerAllocatorInterface;
 
-class CanAccessMemberArea extends AbstractCapability implements ContainerAllocatorInterface
+class CanAccessMemberArea extends AbstractUserCapability
 {
     public const ID = 'can_access_member_area';
-
-    use CapabilityRegistrationTrait;
 
     protected string $name = 'Can Access Member Area';
 
