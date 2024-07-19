@@ -3,18 +3,18 @@ declare(strict_types=1);
 
 namespace ArrayAccess\TrayDigita\App\Modules\Core\Route\Controllers;
 
+use ArrayAccess\TrayDigita\App\Modules\Core\Core;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\Admin;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\User;
 use ArrayAccess\TrayDigita\App\Modules\Core\Route\Attributes\Dashboard as DashboardAttribute;
 use ArrayAccess\TrayDigita\App\Modules\Core\Route\Attributes\User as UserAttribute;
-use ArrayAccess\TrayDigita\App\Modules\Users\Users;
 use ArrayAccess\TrayDigita\Routing\AbstractController;
 use ArrayAccess\TrayDigita\Util\Filter\DataNormalizer;
 use Psr\Http\Message\ServerRequestInterface;
 
 abstract class AbstractAuthenticationBasedController extends AbstractController
 {
-    protected Users $users;
+    protected Core $core;
 
     protected ?User $user = null;
 
@@ -37,15 +37,16 @@ abstract class AbstractAuthenticationBasedController extends AbstractController
         return $this->authenticationMethod;
     }
 
+    /** @noinspection PhpMissingReturnTypeInspection */
     final public function beforeDispatch(ServerRequestInterface $request, string $method, ...$arguments)
     {
         $this->authPath = '/'.trim(DataNormalizer::normalizeUnixDirectorySeparator($this->authPath), '/');
         $this->authPath = $this->authPath ?: '/auth';
         $this->userAuthPath = UserAttribute::path($this->authPath);
         $this->dashboardAuthPath = DashboardAttribute::path($this->authPath);
-        $this->users = $this->getModule(Users::class);
-        $this->user = $this->users->getAdminAccount();
-        $this->admin = $this->users->getUserAccount();
+        $this->core = $this->getModule(Core::class);
+        $this->user = $this->core->getAdminAccount();
+        $this->admin = $this->core->getUserAccount();
         $this->getView()->setParameter('user', $this->user);
         $this->getView()->setParameter('admin', $this->admin);
         return $this->doBeforeDispatch($request, $method, ...$arguments);

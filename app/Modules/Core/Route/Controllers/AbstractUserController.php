@@ -18,7 +18,7 @@ abstract class AbstractUserController extends AbstractAdministrationController
      * @param string $method
      * @param ...$arguments
      * @return \Psr\Http\Message\ResponseInterface|void|null
-     * @noinspection PhpUnnecessaryFullyQualifiedNameInspection
+     * @noinspection PhpFullyQualifiedNameUsageInspection
      */
     public function doAfterBeforeDispatch(
         ServerRequestInterface $request,

@@ -23,9 +23,8 @@ return (function () {
     require TD_ROOT_DIRECTORY .'/vendor/autoload.php';
 
     // load preload file
-    if (file_exists(TD_ROOT_DIRECTORY . '/preload.php') && is_file(TD_ROOT_DIRECTORY . '/preload.php')) {
+    if (file_exists(TD_ROOT_DIRECTORY . '/preload-index.php') && is_file(TD_ROOT_DIRECTORY . '/preload-index.php')) {
         (static function () {
-            /** @noinspection PhpIncludeInspection */
             require TD_ROOT_DIRECTORY . '/preload-index.php';
         })();
     }

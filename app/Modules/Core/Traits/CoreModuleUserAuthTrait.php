@@ -71,9 +71,25 @@ trait CoreModuleUserAuthTrait
         ]
     ];
 
+    /**
+     * @var ?User
+     */
     private ?User $userAccount = null;
 
+    /**
+     * @var ?User
+     */
+    private ?User $currentUserAccount = null;
+
+    /**
+     * @var ?Admin $currentAdminAccount
+     */
     private ?Admin $adminAccount = null;
+
+    /**
+     * @var ?Admin $currentAdminAccount
+     */
+    private ?Admin $currentAdminAccount = null;
 
     private bool $authProcessed = false;
 
@@ -82,7 +98,7 @@ trait CoreModuleUserAuthTrait
      */
     private ?string $currentMode = null;
 
-    private string $defaultMode = self::ADMIN_MODE;
+    private string $defaultMode = self::USER_MODE;
 
     private bool $cookieResolved = false;
 
@@ -164,18 +180,17 @@ trait CoreModuleUserAuthTrait
         $userCookie  = $cookieParams[$cookieNames[self::USER_MODE]['name']]??null;
         $userCookie = is_string($userCookie) ? $userCookie : null;
 
-        $this->setUserAccount(
-            $userCookie ? $userAuth->getUser(
-                $userCookie,
-                $this->getUserEntityFactory()
-            ) : null
-        );
-        $this->setAdminAccount(
-            $adminCookie ? $userAuth->getUser(
-                $adminCookie,
-                $this->getAdminEntityFactory()
-            ) : null
-        );
+        $this->currentUserAccount = $userCookie ? $userAuth->getUser(
+            $userCookie,
+            $this->getUserEntityFactory()
+        ) : null;
+        $this->currentAdminAccount = $adminCookie ? $userAuth->getUser(
+            $adminCookie,
+            $this->getAdminEntityFactory()
+        ) : null;
+
+        $this->userAccount ??= $this->currentUserAccount;
+        $this->adminAccount ??= $this->currentAdminAccount;
 
         return $this;
     }
@@ -219,6 +234,11 @@ trait CoreModuleUserAuthTrait
         return $this;
     }
 
+    /**
+     * Get admin entity factory
+     *
+     * @return AdminEntityFactory
+     */
     public function getAdminEntityFactory() : AdminEntityFactory
     {
         try {
@@ -233,6 +253,11 @@ trait CoreModuleUserAuthTrait
         }
     }
 
+    /**
+     * Get user entity factory
+     *
+     * @return UserEntityFactory
+     */
     public function getUserEntityFactory() : UserEntityFactory
     {
         try {
@@ -247,11 +272,21 @@ trait CoreModuleUserAuthTrait
         }
     }
 
+    /**
+     * Set as admin mode
+     *
+     * @return void
+     */
     public function setAsAdminMode(): void
     {
         $this->currentMode = self::ADMIN_MODE;
     }
 
+    /**
+     * Set as user mode
+     *
+     * @return void
+     */
     public function setAsUserMode(): void
     {
         $this->currentMode = self::USER_MODE;
@@ -268,12 +303,34 @@ trait CoreModuleUserAuthTrait
     }
 
     /**
+     * Restore admin account
+     *
+     * @return $this
+     */
+    public function restoreAdminAccount() : static
+    {
+        $this->setUserAccount($this->doProcessAuth()->currentAdminAccount);
+        return $this;
+    }
+
+    /**
      * @param ?User $user
      * @return $this
      */
     public function setUserAccount(?User $user): static
     {
         $this->userAccount = $user;
+        return $this;
+    }
+
+    /**
+     * Restore user account
+     *
+     * @return $this
+     */
+    public function restoreUserAccount(): static
+    {
+        $this->setUserAccount($this->doProcessAuth()->currentUserAccount);
         return $this;
     }
 
@@ -405,7 +462,7 @@ trait CoreModuleUserAuthTrait
      */
     public function getUserAccount(): ?User
     {
-        return $this->doProcessAuth()->userAccount;
+        return $this->userAccount??$this->doProcessAuth()->userAccount;
     }
 
     /**
@@ -413,7 +470,7 @@ trait CoreModuleUserAuthTrait
      */
     public function getAdminAccount(): ?Admin
     {
-        return $this->doProcessAuth()->adminAccount;
+        return $this->adminAccount??$this->doProcessAuth()->adminAccount;
     }
 
     /**
@@ -436,6 +493,13 @@ trait CoreModuleUserAuthTrait
         return $this->getCookieNames()[$type]??null;
     }
 
+    /**
+     * Send auth cookie
+     *
+     * @param AbstractUser $userEntity
+     * @param ResponseInterface $response
+     * @return ResponseInterface
+     */
     public function sendAuthCookie(
         AbstractUser $userEntity,
         ResponseInterface $response

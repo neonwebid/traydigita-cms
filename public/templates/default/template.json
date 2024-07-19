@@ -1,0 +1,6 @@
+{
+    "name" : "Neon Web ID Default Templates",
+    "version": "1.0.0",
+    "description": "Default core templates",
+    "text_domain": "neonwebid"
+}

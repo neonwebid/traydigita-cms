@@ -5,6 +5,7 @@ namespace ArrayAccess\TrayDigita\App\Modules\Core\Route\Attributes;
 
 use ArrayAccess\TrayDigita\Routing\Attributes\Group;
 use ArrayAccess\TrayDigita\Routing\Router;
+use ArrayAccess\TrayDigita\Util\Filter\DataNormalizer;
 use ArrayAccess\TrayDigita\View\Interfaces\ViewInterface;
 use Attribute;
 use Psr\Http\Message\UriInterface;
@@ -16,6 +17,8 @@ use function substr;
 #[Attribute(Attribute::TARGET_CLASS)]
 class RouteAPI extends Group
 {
+    private static string $prefix = self::API_PREFIX;
+
     public const VERSION = '1';
 
     public const VERSION_PREFIX = 'v';
@@ -36,6 +39,7 @@ class RouteAPI extends Group
             $pattern = "(?:$pattern)";
         }
         $pattern = $prefixRoute . $pattern;
+        self::$prefix = $pattern;
         parent::__construct($pattern);
     }
 
@@ -48,7 +52,7 @@ class RouteAPI extends Group
     {
         $return = sprintf(
             '/%s/%s',
-            trim(static::API_PREFIX, '/'),
+            trim(static::$prefix, '/'),
             trim(static::VERSION_PREFIX . static::VERSION, '/')
         );
         $prefix = trim(static::subPrefix(), '/');
@@ -56,6 +60,14 @@ class RouteAPI extends Group
             $return .= '/' . $prefix;
         }
         return $return;
+    }
+
+    public static function setPrefix(string $prefix): void
+    {
+        static::$prefix = trim(
+            DataNormalizer::normalizeUnixDirectorySeparator($prefix),
+            '/'
+        );
     }
 
     public static function baseURI(

@@ -5,7 +5,10 @@ namespace ArrayAccess\TrayDigita\App\Modules\Core\Middlewares;
 
 use ArrayAccess\TrayDigita\App\Modules\Core\Abstracts\AbstractCoreMiddleware;
 use ArrayAccess\TrayDigita\App\Modules\Core\Route\Attributes\Dashboard;
+use ArrayAccess\TrayDigita\App\Modules\Core\Route\Attributes\DashboardAPI;
+use ArrayAccess\TrayDigita\App\Modules\Core\Route\Attributes\RouteAPI;
 use ArrayAccess\TrayDigita\App\Modules\Core\Route\Attributes\User;
+use ArrayAccess\TrayDigita\App\Modules\Core\Route\Attributes\UserAPI;
 use ArrayAccess\TrayDigita\Cache\Cache;
 use ArrayAccess\TrayDigita\Collection\Config;
 use ArrayAccess\TrayDigita\Http\Code;
@@ -52,6 +55,11 @@ class InitMiddlewares extends AbstractCoreMiddleware
     private bool $cache404 = false;
 
     /**
+     * @var bool Cache API
+     */
+    private bool $cacheApi = false;
+
+    /**
      * @var bool Is member or user
      */
     private bool $isMemberOrUser = false;
@@ -87,16 +95,23 @@ class InitMiddlewares extends AbstractCoreMiddleware
     {
         $request ??= $this->core->getRequest();
         $path = $this->filterPath($request->getUri()->getPath());
-        if ($path === User::path() || str_starts_with($path, User::path() . '/')) {
+        if ($path === User::path() || str_starts_with($path, User::path() . '/')
+            || UserAPI::prefix() === $path || str_starts_with($path, UserAPI::prefix() . '/')
+        ) {
             if (!$this->core->getCurrentSetMode()) {
                 $this->core->setAsUserMode();
             }
             return false;
         }
-        if ($path === Dashboard::path() || str_starts_with($path, Dashboard::path() . '/')) {
+        if ($path === Dashboard::path() || str_starts_with($path, Dashboard::path() . '/')
+            || $path === DashboardAPI::prefix() || str_starts_with($path, DashboardAPI::prefix() . '/')
+        ) {
             if (!$this->core->getCurrentSetMode()) {
                 $this->core->setAsAdminMode();
             }
+            return false;
+        }
+        if (!$this->cacheApi && ($path === RouteAPI::prefix() || str_starts_with($path, RouteAPI::prefix() . '/'))) {
             return false;
         }
         // should GET
@@ -135,6 +150,13 @@ class InitMiddlewares extends AbstractCoreMiddleware
                 User::setPrefix($userPath);
             }
         }
+        $apiPath = $env->get('api_path');
+        if (is_string($apiPath)) {
+            $apiPath = $this->filterPath($apiPath);
+            if ($apiPath) {
+                RouteAPI::setPrefix($apiPath);
+            }
+        }
         $enableCache = $env->get('enable_cache') === true;
         if (!$enableCache) {
             return $request;
@@ -144,6 +166,7 @@ class InitMiddlewares extends AbstractCoreMiddleware
             $this->expiredTime = $expireTime;
         }
         $this->cache404 = $env->get('cache_404') === true;
+        $this->cacheApi = $env->get('cache_api') === true;
         $this->showDebugBar = $env->get('profiling') === true && $env->get('debugBar') === true;
         $path = DataNormalizer::normalizeUnixDirectorySeparator($request->getUri()->getPath());
         $dashboardPath = Dashboard::prefix();
@@ -152,7 +175,12 @@ class InitMiddlewares extends AbstractCoreMiddleware
             || $userPath === $path
             || str_starts_with($path, $dashboardPath . '/')
             || str_starts_with($path, $userPath . '/');
-        $this->cacheKey = 'server_cache_' . sha1($request->getUri()->getPath());
+        $pathUri = $request->getUri()->getPath();
+        $query = $request->getUri()->getQuery();
+        if ($query) {
+            $pathUri .= '?' . $query;
+        }
+        $this->cacheKey = 'server_cache_' . sha1($pathUri);
         $this->debug = $env->get('debug') === true;
         // disable cache for dashboard and user
         if (!$this->isNeedToCache($request)) {

@@ -34,7 +34,7 @@ class AuthExtension extends AbstractCoreTwigExtension
             ),
             new TwigFunction(
                 'current_account',
-                fn () : AbstractUser => $this->core->getAccount()
+                fn () : ?AbstractUser => $this->core->getAccount()
             ),
             new TwigFunction(
                 'user_by_id',

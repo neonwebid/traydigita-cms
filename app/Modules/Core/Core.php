@@ -259,7 +259,7 @@ final class Core implements ModuleInterface, ContainerIndicateInterface, Manager
             function ($key, SplFileInfo $info) use ($directory) {
                 $namespace = __NAMESPACE__ .'\\Middlewares\\';
                 $baseDir = substr($info->getPath(), strlen($directory));
-                $namespace .= trim(str_replace(DIRECTORY_SEPARATOR, '\\', $baseDir), '\\') .'\\';
+                $namespace .= trim(str_replace(DIRECTORY_SEPARATOR, '\\', $baseDir), '\\');
                 $className = $namespace . $info->getBasename('.php');
                 if (!class_exists($className)
                     || !is_subclass_of($className, AbstractCoreMiddleware::class)) {
@@ -296,7 +296,7 @@ final class Core implements ModuleInterface, ContainerIndicateInterface, Manager
             function ($key, SplFileInfo $info) use ($directory, $engine) {
                 $namespace = __NAMESPACE__ .'\\TwigExtensions\\';
                 $baseDir = substr($info->getPath(), strlen($directory));
-                $namespace .= trim(str_replace(DIRECTORY_SEPARATOR, '\\', $baseDir), '\\') .'\\';
+                $namespace .= trim(str_replace(DIRECTORY_SEPARATOR, '\\', $baseDir), '\\');
                 $className = $namespace . $info->getBasename('.php');
                 if (!class_exists($className)
                     || !is_subclass_of($className, AbstractCoreTwigExtension::class)
@@ -375,7 +375,6 @@ final class Core implements ModuleInterface, ContainerIndicateInterface, Manager
         if ($this->getKernel()->getConfigError()) {
             return;
         }
-
         $this->getConnection()->registerEntityDirectory(__DIR__ . '/Entities');
         $this->getManager()->attachOnce('view.beforeRender', [$this, 'eventViewBeforeRender']);
         $this->getManager()->attachOnce('view.bodyAttributes', [$this, 'eventViewBodyAttributes']);

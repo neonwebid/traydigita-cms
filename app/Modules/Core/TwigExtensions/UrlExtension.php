@@ -25,6 +25,14 @@ class UrlExtension extends AbstractCoreTwigExtension
             new TwigFunction(
                 'dashboard_api_url',
                 fn ($path = '') => DashboardAPI::baseURI($this->engine->getView(), (string) $path)
+            ),
+            new TwigFunction(
+                'theme_url',
+                fn ($path = '') => $this->engine->getView()->getTemplateRule()->getActive()?->getBaseURI($path)
+            ),
+            new TwigFunction(
+                'base_url',
+                fn ($path = '') => $this->core->getView()->getBaseURI($path)
             )
         ];
     }

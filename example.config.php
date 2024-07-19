@@ -37,12 +37,16 @@ return [
         'dashboard_path' => '/dashboard',
         // user path
         'user_path' => '/member',
+        // api path
+        'api_path' => '/api',
         // enable cache
         'enable_cache' => false,
         // cache expired
         'cache_expired' => 3600, // in seconds
         // cache 404
         'cache_404' => true,
+        // cache api
+        'cache_api' => false,
     ],
     /*! PLEASE IGNORE THIS! BEWARE OF ABOUT CHANGE THE PATH! */
     'path' => [
