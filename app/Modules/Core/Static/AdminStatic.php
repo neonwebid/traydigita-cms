@@ -5,21 +5,21 @@ namespace ArrayAccess\TrayDigita\App\Modules\Core\Static;
 
 use ArrayAccess\TrayDigita\Database\Entities\Interfaces\UserEntityInterface;
 
-final class User
+final class AdminStatic
 {
     public static function findByUsername(string $username): ?UserEntityInterface
     {
-        return CoreModule::getCore()?->getUserEntityFactory()->findByUsername($username);
+        return CoreModuleStatic::core()?->getAdminEntityFactory()->findByUsername($username);
     }
 
     public static function findByEmail(string $email): ?UserEntityInterface
     {
-        return CoreModule::getCore()?->getUserEntityFactory()->findByEmail($email);
+        return CoreModuleStatic::core()?->getAdminEntityFactory()->findByEmail($email);
     }
 
     public static function findById(int $id): ?UserEntityInterface
     {
-        return CoreModule::getCore()?->getUserEntityFactory()->findById($id);
+        return CoreModuleStatic::core()?->getAdminEntityFactory()->findById($id);
     }
 
     public static function findByUsernameOrEmail(string $usernameOrEmail): ?UserEntityInterface

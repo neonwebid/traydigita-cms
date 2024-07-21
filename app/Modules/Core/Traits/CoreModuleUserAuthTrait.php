@@ -195,6 +195,11 @@ trait CoreModuleUserAuthTrait
         return $this;
     }
 
+    /**
+     * Create entity factory container
+     *
+     * @return $this
+     */
     private function createEntityFactoryContainer(): static
     {
         $this->assertObjectCoreModule();

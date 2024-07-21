@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace ArrayAccess\TrayDigita\Root\Public;
 
+use ArrayAccess\TrayDigita\App\Modules\Core\Core;
+use ArrayAccess\TrayDigita\Exceptions\Runtime\RuntimeException;
+use ArrayAccess\TrayDigita\Kernel\Decorator;
+use ArrayAccess\TrayDigita\Module\Modules;
 use ArrayAccess\TrayDigita\Web;
 use function dirname;
 use function define;
@@ -29,6 +33,21 @@ return (function () {
         })();
     }
 
+    // check core Module
+    Decorator::kernel()
+        ->getManager()
+        ?->attachOnce(
+            'kernel.beforeInitModules',
+            static function (Modules $modules) {
+                // do something before init modules
+                if ($modules->has(Core::class)) {
+                    return;
+                }
+                throw new RuntimeException(
+                    'Core module not exists, please check your module configuration.'
+                );
+            }
+        );
     // should use return to builtin web server running properly
     return Web::serve();
 })();

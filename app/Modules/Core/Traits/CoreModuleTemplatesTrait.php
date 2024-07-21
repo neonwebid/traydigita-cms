@@ -17,7 +17,7 @@ trait CoreModuleTemplatesTrait
      * @param KernelInterface $kernel
      * @return mixed
      */
-    private function eventInitModule($module, KernelInterface $kernel) : mixed
+    private function eventInitModuleTemplate($module, KernelInterface $kernel) : mixed
     {
         $this->assertObjectCoreModule();
 

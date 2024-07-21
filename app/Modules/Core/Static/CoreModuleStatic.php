@@ -4,8 +4,11 @@ declare(strict_types=1);
 namespace ArrayAccess\TrayDigita\App\Modules\Core\Static;
 
 use ArrayAccess\TrayDigita\App\Modules\Core\Core;
+use ArrayAccess\TrayDigita\Module\Modules;
+use ArrayAccess\TrayDigita\Util\Filter\ContainerHelper;
+use Throwable;
 
-final class CoreModule
+final class CoreModuleStatic
 {
     /**
      * @var Core $core The core instance.
@@ -43,8 +46,18 @@ final class CoreModule
      *
      * @return ?Core The core instance.
      */
-    public static function getCore(): ?Core
+    public static function core(): ?Core
     {
+        if (!isset(self::$core)) {
+            try {
+                $core = ContainerHelper::use(Modules::class)?->get(Core::class);
+                if ($core instanceof Core) {
+                    self::$core = $core;
+                }
+            } catch (Throwable) {
+                return null;
+            }
+        }
         return self::$core??null;
     }
 }

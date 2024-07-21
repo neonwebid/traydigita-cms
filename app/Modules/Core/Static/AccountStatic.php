@@ -6,19 +6,19 @@ namespace ArrayAccess\TrayDigita\App\Modules\Core\Static;
 use ArrayAccess\TrayDigita\App\Modules\Core\Core;
 use ArrayAccess\TrayDigita\Database\Entities\Interfaces\UserEntityInterface;
 
-final class Account
+final class AccountStatic
 {
     /**
-     * @return ?class-string<User|Admin>
+     * @return ?class-string<UserStatic|AdminStatic>
      */
     public static function getUserMode() : ?string
     {
-        if (!CoreModule::getCore()) {
+        if (!CoreModuleStatic::core()) {
             return null;
         }
-        return CoreModule::getCore()->getCurrentMode() === Core::ADMIN_MODE
-            ? Admin::class
-            : User::class;
+        return CoreModuleStatic::core()->getCurrentMode() === Core::ADMIN_MODE
+            ? AdminStatic::class
+            : UserStatic::class;
     }
 
     public static function findByUsername(string $username): ?UserEntityInterface

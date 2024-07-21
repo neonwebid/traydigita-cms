@@ -30,7 +30,7 @@ final class RoleStatic
         if (!$role) {
             return null;
         }
-        $permission ??= CoreModule::getCore()?->getPermission();
+        $permission ??= CoreModuleStatic::core()?->getPermission();
         if (!$permission) {
             return null;
         }

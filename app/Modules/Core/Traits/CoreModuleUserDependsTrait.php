@@ -10,26 +10,37 @@ trait CoreModuleUserDependsTrait
 {
     use CoreModuleAssertionTrait;
 
-    private ?Option $option = null;
-    private ?Sites $site = null;
+    /**
+     * @var Option $option
+     */
+    private Option $option;
 
+    /**
+     * @var Sites $site
+     */
+    private Sites $site;
+
+    /**
+     * @return Option
+     */
     public function getOption(): Option
     {
-        if ($this->option) {
-            return $this->option;
+        if (!isset($this->option)) {
+            $this->assertObjectCoreModule();
+            $this->option = new Option($this);
         }
-        $this->assertObjectCoreModule();
-        $this->option = new Option($this);
         return $this->option;
     }
 
+    /**
+     * @return Sites
+     */
     public function getSite(): Sites
     {
-        if ($this->site) {
-            return $this->site;
+        if (!isset($this->site)) {
+            $this->assertObjectCoreModule();
+            $this->site = new Sites($this);
         }
-        $this->assertObjectCoreModule();
-        $this->site = new Sites($this);
         return $this->site;
     }
 }

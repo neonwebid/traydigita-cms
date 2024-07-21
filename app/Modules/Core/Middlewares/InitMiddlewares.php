@@ -4,17 +4,10 @@ declare(strict_types=1);
 namespace ArrayAccess\TrayDigita\App\Modules\Core\Middlewares;
 
 use ArrayAccess\TrayDigita\App\Modules\Core\Abstracts\AbstractCoreMiddleware;
-use ArrayAccess\TrayDigita\App\Modules\Core\Route\Attributes\Dashboard;
-use ArrayAccess\TrayDigita\App\Modules\Core\Route\Attributes\DashboardAPI;
-use ArrayAccess\TrayDigita\App\Modules\Core\Route\Attributes\RouteAPI;
-use ArrayAccess\TrayDigita\App\Modules\Core\Route\Attributes\User;
-use ArrayAccess\TrayDigita\App\Modules\Core\Route\Attributes\UserAPI;
-use ArrayAccess\TrayDigita\Cache\Cache;
-use ArrayAccess\TrayDigita\Collection\Config;
+use ArrayAccess\TrayDigita\App\Modules\Core\Static\CacheStatic;
 use ArrayAccess\TrayDigita\Http\Code;
 use ArrayAccess\TrayDigita\Http\Factory\ResponseFactory;
 use ArrayAccess\TrayDigita\Util\Filter\ContainerHelper;
-use ArrayAccess\TrayDigita\Util\Filter\DataNormalizer;
 use ArrayAccess\TrayDigita\Util\Filter\DataType;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -40,29 +33,9 @@ class InitMiddlewares extends AbstractCoreMiddleware
     private ?string $cacheKey = null;
 
     /**
-     * @var int Expired time
-     */
-    private int $expiredTime = 3600;
-
-    /**
      * @var bool Serve from cache
      */
     private bool $serveFromCache = false;
-
-    /**
-     * @var bool Cache 404
-     */
-    private bool $cache404 = false;
-
-    /**
-     * @var bool Cache API
-     */
-    private bool $cacheApi = false;
-
-    /**
-     * @var bool Is member or user
-     */
-    private bool $isMemberOrUser = false;
 
     /**
      * @var bool Debug
@@ -75,55 +48,24 @@ class InitMiddlewares extends AbstractCoreMiddleware
     private bool $showDebugBar = false;
 
     /**
-     * Filter path of dashboard and user
-     *
-     * @param string $path
-     * @return string
-     */
-    protected function filterPath(string $path): string
-    {
-        return $this->core->filterUriPath($path);
-    }
-
-    /**
      * Check if need to cache
      *
      * @param ?ServerRequestInterface $request
      * @return bool
      */
-    public function isNeedToCache(?ServerRequestInterface $request): bool
+    public function isNeedToCache(?ServerRequestInterface $request = null): bool
     {
         $request ??= $this->core->getRequest();
-        $path = $this->filterPath($request->getUri()->getPath());
-        if ($path === User::path() || str_starts_with($path, User::path() . '/')
-            || UserAPI::prefix() === $path || str_starts_with($path, UserAPI::prefix() . '/')
-        ) {
-            if (!$this->core->getCurrentSetMode()) {
-                $this->core->setAsUserMode();
-            }
-            return false;
-        }
-        if ($path === Dashboard::path() || str_starts_with($path, Dashboard::path() . '/')
-            || $path === DashboardAPI::prefix() || str_starts_with($path, DashboardAPI::prefix() . '/')
-        ) {
-            if (!$this->core->getCurrentSetMode()) {
-                $this->core->setAsAdminMode();
-            }
-            return false;
-        }
-        if (!$this->cacheApi && ($path === RouteAPI::prefix() || str_starts_with($path, RouteAPI::prefix() . '/'))) {
-            return false;
-        }
-        // should GET
-        if ($this->debug
+        return !(
+            $request->getMethod() !== 'GET'
+            || $this->debug
             || $this->serveFromCache
-            || !$this->cacheKey
-            || $this->isMemberOrUser
-            || $request->getMethod() !== 'GET'
-        ) {
-            return false;
-        }
-        return true;
+            || ! $this->cacheKey
+            || ! $this->core->isEnableRequestCache($request)
+            || $this->core->isUserPath($request)
+            || $this->core->isDashboardPath($request)
+            || $this->core->isAPIPath($request)
+        );
     }
 
     /**
@@ -131,52 +73,9 @@ class InitMiddlewares extends AbstractCoreMiddleware
      */
     protected function doProcess(ServerRequestInterface $request): ServerRequestInterface|ResponseInterface
     {
-        $env = ContainerHelper::use(Config::class)->get('environment');
-        if (!$env instanceof Config) {
-            return $request;
-        }
-
-        $dashboardPath = $env->get('dashboard_path');
-        if (is_string($dashboardPath)) {
-            $dashboardPath = $this->filterPath($dashboardPath);
-            if ($dashboardPath) {
-                Dashboard::setPrefix($dashboardPath);
-            }
-        }
-        $userPath = $env->get('user_path');
-        if (is_string($userPath)) {
-            $userPath = $this->filterPath($userPath);
-            if ($userPath) {
-                User::setPrefix($userPath);
-            }
-        }
-        $apiPath = $env->get('api_path');
-        if (is_string($apiPath)) {
-            $apiPath = $this->filterPath($apiPath);
-            if ($apiPath) {
-                RouteAPI::setPrefix($apiPath);
-            }
-        }
-        $enableCache = $env->get('enable_cache') === true;
-        if (!$enableCache) {
-            return $request;
-        }
-        $expireTime = $env->get('cache_expire');
-        if (is_int($expireTime) && $expireTime > 0) {
-            $this->expiredTime = $expireTime;
-        }
-        $this->cache404 = $env->get('cache_404') === true;
-        $this->cacheApi = $env->get('cache_api') === true;
-        $this->showDebugBar = $env->get('profiling') === true && $env->get('debugBar') === true;
-        $path = DataNormalizer::normalizeUnixDirectorySeparator($request->getUri()->getPath());
-        $dashboardPath = Dashboard::prefix();
-        $userPath = User::prefix();
-        $this->isMemberOrUser = $path === $dashboardPath
-            || $userPath === $path
-            || str_starts_with($path, $dashboardPath . '/')
-            || str_starts_with($path, $userPath . '/');
+        $env = $this->core->getConfigEnvironment();
         $pathUri = $request->getUri()->getPath();
-        $query = $request->getUri()->getQuery();
+        $query   = $request->getUri()->getQuery();
         if ($query) {
             $pathUri .= '?' . $query;
         }
@@ -212,13 +111,16 @@ class InitMiddlewares extends AbstractCoreMiddleware
         if (!$this->isNeedToCache($request)) {
             return null;
         }
+        $expiredTime = $this->core->getCacheRequestExpire($request);
+        if ($expiredTime <= 0) {
+            return null;
+        }
         // no cache
         /*if (str_contains($request->getHeaderLine('Cache-Control'), 'no-cache')) {
             return null;
         }*/
         try {
-            $cache = ContainerHelper::use(Cache::class, $this->getContainer());
-            $item = $cache->getItem($this->cacheKey)->get();
+            $item = CacheStatic::get($this->cacheKey);
             if (!is_array($item)) {
                 return null;
             }
@@ -239,23 +141,24 @@ class InitMiddlewares extends AbstractCoreMiddleware
                 || !is_string($reason)
                 || !in_array($contentType, ['json', 'html'])
                 || $saved_time > time()
-                || ($saved_time + $this->expiredTime) < time()
+                || ($saved_time + $expiredTime) < time()
             ) {
                 // delete cache
-                $cache->deleteItem($this->cacheKey);
+                CacheStatic::deleteItem($this->cacheKey);
                 return null;
             }
             foreach ($headers as $name => $header) {
                 if (!is_string($name) || !is_array($header)) {
                     // delete cache
-                    $cache->deleteItem($this->cacheKey);
+                    CacheStatic::deleteItem($this->cacheKey);
                     return null;
                 }
             }
-            if ($code === 404 && !$this->cache404) {
+            if ($code === 404 && !$this->core->isEnableCache404Request($request)) {
                 // delete cache
                 return null;
             }
+
             if ($code !== 200 && $code !== 404) {
                 // delete cache
                 return null;
@@ -297,7 +200,7 @@ class InitMiddlewares extends AbstractCoreMiddleware
             $response = $response->withHeader('Content-Length', $response->getBody()->getSize());
         }
 
-        $expiredTime = $saved_time + $this->expiredTime;
+        $expiredTime = $saved_time + $expiredTime;
         // set cache control
         return $response
             ->withHeader('Expires', gmdate('D, d M Y H:i:s T', $expiredTime))
@@ -317,9 +220,12 @@ class InitMiddlewares extends AbstractCoreMiddleware
         if (!$this->isNeedToCache($this->request)) {
             return $response;
         }
-
+        $expiredTime = $this->core->getCacheRequestExpire($this->request);
+        if ($expiredTime <= 0) {
+            return $response;
+        }
         $code = $response->getStatusCode();
-        if (($code === 404 && !$this->cache404)
+        if (($code === 404 && !$this->core->isEnableCache404Request($this->request))
             || ($code !== 200 && $code !== 404)
         ) {
             return $response;
@@ -339,20 +245,13 @@ class InitMiddlewares extends AbstractCoreMiddleware
         if (!$stream->isSeekable()) {
             return $response;
         }
-
-        try {
-            $cache = ContainerHelper::use(Cache::class, $this->getContainer());
-            $item = $cache->getItem($this->cacheKey);
-        } catch (Throwable) {
-            return $response;
-        }
         $stream->rewind();
         $headers = array_change_key_case($response->getHeaders());
         // no save header of cache-control & set-cookie
         unset($headers['set-cookie'], $headers['cache-control'], $headers['content-length']);
-        $item
-            ->expiresAfter($this->expiredTime)
-            ->set([
+        CacheStatic::save(
+            $this->cacheKey,
+            [
                 'saved_time' => time(),
                 'data' => $stream->getContents(),
                 'headers' => $headers,
@@ -360,12 +259,10 @@ class InitMiddlewares extends AbstractCoreMiddleware
                 'reason' => $response->getReasonPhrase(),
                 'content_type' => $isJson ? 'json' : 'html',
                 'has_content_length' => $response->hasHeader('Content-Length')
-            ]);
+            ],
+            $expiredTime
+        );
         $stream->rewind();
-        try {
-            $cache->save($item);
-        } catch (Throwable) {
-        }
         return $response;
     }
 }

@@ -32,6 +32,7 @@ trait CoreModuleUserPermissiveTrait
 
     /**
      * Resolve permission
+     *
      * @return $this
      */
     private function resolvePermission(): static

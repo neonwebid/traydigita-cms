@@ -24,15 +24,16 @@ use ArrayAccess\TrayDigita\App\Modules\Core\Entities\UserTerm;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\UserTermGroup;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\UserTermGroupMeta;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\UserTermMeta;
-use ArrayAccess\TrayDigita\App\Modules\Core\Static\CoreModule;
+use ArrayAccess\TrayDigita\App\Modules\Core\Static\CoreModuleStatic;
+use ArrayAccess\TrayDigita\App\Modules\Core\Traits\CoreModuleMetaInitTrait;
 use ArrayAccess\TrayDigita\App\Modules\Core\Traits\CoreModuleTemplatesTrait;
 use ArrayAccess\TrayDigita\App\Modules\Core\Traits\CoreModuleUserAuthTrait;
 use ArrayAccess\TrayDigita\App\Modules\Core\Traits\CoreModuleUserDependsTrait;
 use ArrayAccess\TrayDigita\App\Modules\Core\Traits\CoreModuleUserEventTrait;
 use ArrayAccess\TrayDigita\App\Modules\Core\Traits\CoreModuleUserPermissiveTrait;
 use ArrayAccess\TrayDigita\Auth\Roles\AbstractCapability;
+use ArrayAccess\TrayDigita\Collection\Config;
 use ArrayAccess\TrayDigita\Container\Interfaces\ContainerIndicateInterface;
-use ArrayAccess\TrayDigita\Database\Connection;
 use ArrayAccess\TrayDigita\Event\Interfaces\ManagerIndicateInterface;
 use ArrayAccess\TrayDigita\Http\ServerRequest;
 use ArrayAccess\TrayDigita\Module\Interfaces\ModuleInterface;
@@ -42,13 +43,11 @@ use ArrayAccess\TrayDigita\Traits\Database\ConnectionTrait;
 use ArrayAccess\TrayDigita\Traits\Service\TranslatorTrait;
 use ArrayAccess\TrayDigita\Traits\View\ViewTrait;
 use ArrayAccess\TrayDigita\Util\Filter\ContainerHelper;
-use ArrayAccess\TrayDigita\Util\Filter\DataNormalizer;
 use ArrayAccess\TrayDigita\Util\Filter\IterableHelper;
 use ArrayAccess\TrayDigita\View\Engines\TwigEngine;
 use Psr\Http\Message\ServerRequestFactoryInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamFactoryInterface;
-use Psr\Http\Message\UriInterface;
 use SplFileInfo;
 use Symfony\Component\Finder\Finder;
 use Throwable;
@@ -59,10 +58,10 @@ use const PHP_INT_MIN;
 
 final class Core implements ModuleInterface, ContainerIndicateInterface, ManagerIndicateInterface
 {
-    use ModuleTrait;
-
-    use TranslatorTrait,
+    use ModuleTrait,
+        TranslatorTrait,
         ViewTrait,
+        CoreModuleMetaInitTrait,
         CoreModuleUserDependsTrait,
         ConnectionTrait,
         CoreModuleTemplatesTrait,
@@ -109,17 +108,6 @@ final class Core implements ModuleInterface, ContainerIndicateInterface, Manager
         ]
     ];
 
-
-    /**
-     * @var array<string, int>
-     */
-    private array $priorities = [];
-
-    /**
-     * @var ?Connection
-     */
-    private ?Connection $connection = null;
-
     /**
      * @var ServerRequestInterface|null $request the server request
      */
@@ -135,6 +123,9 @@ final class Core implements ModuleInterface, ContainerIndicateInterface, Manager
      */
     private bool $middlewareRegistered = false;
 
+    /**
+     * @param Modules $modules
+     */
     final public function __construct(public readonly Modules $modules)
     {
         if (!$this->modules->has($this)) {
@@ -142,42 +133,34 @@ final class Core implements ModuleInterface, ContainerIndicateInterface, Manager
         }
         $this->important = true;
         $this->priority = PHP_INT_MIN;
-        $this->name = 'Core';
         // set core
-        CoreModule::setCore($this);
+        CoreModuleStatic::setCore($this);
         // lock core
-        CoreModule::lockCore();
+        CoreModuleStatic::lockCore();
     }
 
+    /**
+     * Determine if the module is core
+     */
     final public function isCore(): bool
     {
         return true;
     }
 
     /**
-     * Filter path of dashboard and user
-     *
-     * @param string|ServerRequestInterface|UriInterface|null $path default null as request
-     * @return string
+     * @return Config
      */
-    public function filterUriPath(string|ServerRequestInterface|UriInterface|null $path = null): string
+    public function getConfig(): Config
     {
-        $path ??= $this->getRequest();
-        $path = $path instanceof ServerRequestInterface
-            ? $path->getUri()->getPath()
-            : ($path instanceof UriInterface ? $path->getPath() : $path);
-        if (str_contains($path, '?')) {
-            $path = explode('?', $path)[0];
-        }
-        if (str_contains($path, '#')) {
-            $path = explode('#', $path)[0];
-        }
+        return ContainerHelper::use(Config::class, $this->getContainer());
+    }
 
-        $path = DataNormalizer::normalizeUnixDirectorySeparator($path);
-        $path = preg_replace('~[^a-z0-9/_-]~', '', strtolower($path));
-        $path = trim(preg_replace('~/+~', '/', $path), '/');
-        $path = trim(preg_replace('~/+~', '/', $path), '/');
-        return $path ? "/$path" : '';
+    /**
+     * @return Config
+     */
+    public function getConfigEnvironment(): Config
+    {
+        return $this->getConfig()->get('environment');
     }
 
     /**
@@ -253,7 +236,7 @@ final class Core implements ModuleInterface, ContainerIndicateInterface, Manager
                 ->in($directory)
                 ->ignoreVCS(true)
                 ->ignoreDotFiles(true)
-                ->depth('<=10')
+                ->depth('<= 10')
                 ->name('/^[_A-za-z]([a-zA-Z0-9]+)?\.php$/')
                 ->files(),
             function ($key, SplFileInfo $info) use ($directory) {
@@ -290,7 +273,7 @@ final class Core implements ModuleInterface, ContainerIndicateInterface, Manager
                 ->in($directory)
                 ->ignoreVCS(true)
                 ->ignoreDotFiles(true)
-                ->depth('<=10')
+                ->depth('<= 10')
                 ->name('/^[_A-za-z]([a-zA-Z0-9]+)?\.php$/')
                 ->files(),
             function ($key, SplFileInfo $info) use ($directory, $engine) {
@@ -378,7 +361,8 @@ final class Core implements ModuleInterface, ContainerIndicateInterface, Manager
         $this->getConnection()->registerEntityDirectory(__DIR__ . '/Entities');
         $this->getManager()->attachOnce('view.beforeRender', [$this, 'eventViewBeforeRender']);
         $this->getManager()->attachOnce('view.bodyAttributes', [$this, 'eventViewBodyAttributes']);
-        $this->getManager()->attachOnce('kernel.afterInitModules', [$this, 'eventInitModule']);
+        $this->getManager()->attachOnce('kernel.afterInitModules', [$this, 'eventInitModuleTemplate']);
+        $this->getManager()->attachOnce('kernel.afterInitModules', [$this, 'eventInitModuleMeta']);
     }
 
     /**

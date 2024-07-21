@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace ArrayAccess\TrayDigita\App\Modules\Core\Entities;
 
-use ArrayAccess\TrayDigita\App\Modules\Core\Static\CoreModule;
+use ArrayAccess\TrayDigita\App\Modules\Core\Static\CoreModuleStatic;
 use ArrayAccess\TrayDigita\App\Modules\Core\Static\RoleStatic;
 use ArrayAccess\TrayDigita\Auth\Roles\Interfaces\CapabilityInterface;
 use ArrayAccess\TrayDigita\Auth\Roles\Interfaces\RoleInterface;
@@ -377,6 +377,6 @@ class User extends AbstractUser
      */
     public function permitted(string|CapabilityInterface $capability): bool
     {
-        return CoreModule::getCore()?->permitted($capability, $this) === true;
+        return CoreModuleStatic::core()?->permitted($capability, $this) === true;
     }
 }

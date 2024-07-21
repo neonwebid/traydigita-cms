@@ -8,5 +8,5 @@ use Attribute;
 #[Attribute(Attribute::TARGET_CLASS)]
 class User extends Dashboard
 {
-    protected static string $prefix = 'user';
+    protected static string $prefix = 'member';
 }

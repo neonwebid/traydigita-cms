@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace ArrayAccess\TrayDigita\App\Modules\Core\TwigExtensions;
 
 use ArrayAccess\TrayDigita\App\Modules\Core\Abstracts\AbstractCoreTwigExtension;
-use ArrayAccess\TrayDigita\App\Modules\Core\Core;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\Admin;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\User;
 use ArrayAccess\TrayDigita\Auth\Roles\Interfaces\CapabilityInterface;
@@ -16,10 +15,6 @@ class AuthExtension extends AbstractCoreTwigExtension
     public function getFunctions(): array
     {
         return [
-            new TwigFunction(
-                'core',
-                fn () : Core => $this->core
-            ),
             new TwigFunction(
                 'is_login',
                 fn () : bool => $this->core->isLoggedIn() === true
@@ -70,18 +65,6 @@ class AuthExtension extends AbstractCoreTwigExtension
                 'is_allowed',
                 fn ($capability = null) : bool => (is_string($capability) || $capability instanceof CapabilityInterface)
                     && $this->core->permitted($capability),
-            ),
-            new TwigFunction(
-                'current_mode',
-                fn () : string => $this->core->getCurrentMode()
-            ),
-            new TwigFunction(
-                'is_admin_mode',
-                fn () : bool => $this->core->isAdminMode()
-            ),
-            new TwigFunction(
-                'is_user_mode',
-                fn () : bool => $this->core->isUserMode()
             ),
         ];
     }
