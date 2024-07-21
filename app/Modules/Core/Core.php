@@ -124,6 +124,16 @@ final class Core implements ModuleInterface, ContainerIndicateInterface, Manager
     private bool $middlewareRegistered = false;
 
     /**
+     * @var bool $twigRegistered
+     */
+    private bool $twigRegistered = false;
+
+    /**
+     * @var bool $capabilityRegistered
+     */
+    private bool $capabilityRegistered = false;
+
+    /**
      * @param Modules $modules
      */
     final public function __construct(public readonly Modules $modules)
@@ -263,10 +273,14 @@ final class Core implements ModuleInterface, ContainerIndicateInterface, Manager
      */
     private function registerTwigExtensions() : void
     {
+        if ($this->twigRegistered) {
+            return;
+        }
         $engine = $this->getView()?->getEngine('twig');
         if (!$engine instanceof TwigEngine) {
             return;
         }
+        $this->twigRegistered = true;
         $directory = __DIR__ . DIRECTORY_SEPARATOR . 'TwigExtensions';
         IterableHelper::each(
             Finder::create()
@@ -293,6 +307,10 @@ final class Core implements ModuleInterface, ContainerIndicateInterface, Manager
 
     private function registerCapabilities() : void
     {
+        if ($this->capabilityRegistered) {
+            return;
+        }
+        $this->capabilityRegistered = true;
         $directory = __DIR__ . DIRECTORY_SEPARATOR . 'ACL' . DIRECTORY_SEPARATOR . 'Capabilities';
         IterableHelper::each(
             Finder::create()
@@ -348,7 +366,7 @@ final class Core implements ModuleInterface, ContainerIndicateInterface, Manager
         ) {
             (function () {
                 require $this->getKernel()->getRootDirectory() . '/preload-core.php';
-            })();
+            })->bindTo($this)();
         }
 
         $this->registerTwigExtensions();
