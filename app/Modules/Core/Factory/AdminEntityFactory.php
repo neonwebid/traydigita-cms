@@ -3,38 +3,28 @@ declare(strict_types=1);
 
 namespace ArrayAccess\TrayDigita\App\Modules\Core\Factory;
 
+use ArrayAccess\TrayDigita\App\Modules\Core\Core;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\Admin;
 use ArrayAccess\TrayDigita\Auth\Cookie\Interfaces\UserEntityFactoryInterface;
-use ArrayAccess\TrayDigita\Database\Connection;
-use ArrayAccess\TrayDigita\Database\Entities\Interfaces\UserEntityInterface;
 
 class AdminEntityFactory implements UserEntityFactoryInterface
 {
-    public function __construct(protected Connection $connection)
+    public function __construct(protected Core $core)
     {
     }
 
-    public function findById(int $id): ?UserEntityInterface
+    public function findById(int $id): ?Admin
     {
-        return $this->connection->find(
-            Admin::class,
-            $id
-        );
+        return $this->core->finder->admin->findById($id);
     }
 
-    public function findByUsername(string $username) : ?UserEntityInterface
+    public function findByUsername(string $username) : ?Admin
     {
-        return $this->connection->findOneBy(
-            Admin::class,
-            ['username' => $username]
-        );
+        return $this->core->finder->admin->findByUsername($username);
     }
 
-    public function findByEmail(string $email) : ?UserEntityInterface
+    public function findByEmail(string $email) : ?Admin
     {
-        return $this->connection->findOneBy(
-            Admin::class,
-            ['email' => $email]
-        );
+        return $this->core->finder->admin->findByEmail($email);
     }
 }
