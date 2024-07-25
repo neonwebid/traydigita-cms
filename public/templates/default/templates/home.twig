@@ -5,7 +5,7 @@
             <h1 class="page-title">Home</h1>
         </header>
         <section id="content-section" class="container">
-            {{ content ?? '' }}
+            {{ content | raw }}
         </section>
     </div>
 {% endblock %}
