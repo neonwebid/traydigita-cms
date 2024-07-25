@@ -224,7 +224,7 @@ trait CoreModuleUserAuthTrait
                     UserEntityFactory::class,
                     fn() => ContainerHelper::resolveCallable(UserEntityFactory::class, $container)
                 );
-            } catch (Throwable $e) {
+            } catch (Throwable) {
             }
         }
         if (!$hasAdminEntity && method_exists($container, 'set')) {
@@ -252,9 +252,7 @@ trait CoreModuleUserAuthTrait
                 ->getContainer()
                 ->get(AdminEntityFactory::class);
         } catch (Throwable) {
-            return new AdminEntityFactory(
-                $this->getConnection()
-            );
+            return new AdminEntityFactory($this);
         }
     }
 
@@ -272,7 +270,7 @@ trait CoreModuleUserAuthTrait
                 ->get(UserEntityFactory::class);
         } catch (Throwable) {
             return new UserEntityFactory(
-                $this->getConnection()
+                $this
             );
         }
     }
