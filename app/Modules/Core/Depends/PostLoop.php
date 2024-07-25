@@ -65,11 +65,6 @@ class PostLoop
     ];
 
     /**
-     * @var bool $initializePost
-     */
-    protected bool $initializePost = false;
-
-    /**
      * @var int $perPage
      */
     protected int $perPage = 10;
@@ -446,23 +441,37 @@ class PostLoop
 
     public function is404(): bool
     {
-        if ($this->mode === self::MODE_NOT_FOUND) {
-            return true;
-        }
-        if ($this->found === false) {
+        // if mode is not found or found is false
+        if ($this->mode === self::MODE_NOT_FOUND || $this->found === false) {
             return true;
         }
 
         return !$this->isArchive() && !$this->isSingular() && !$this->isHomepage();
     }
 
+    /**
+     * Reset the loop
+     *
+     * @return void
+     */
+    public function resetQuery(): void
+    {
+        $this->found = null;
+        $this->post = null;
+    }
+
+    /**
+     * Check if there are posts
+     *
+     * @return bool|void|null
+     */
     public function havePosts()
     {
-        if ($this->initializePost) {
-            return $this->post !== null;
+        if ($this->found !== null) {
+            return $this->found;
         }
 
-        $this->initializePost = true;
+        $this->found = false;
         switch ($this->mode) {
             case self::MODE_NOT_FOUND:
                 $this->post = null;
