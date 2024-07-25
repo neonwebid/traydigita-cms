@@ -9,17 +9,17 @@ final class AdminStatic
 {
     public static function findByUsername(string $username): ?UserEntityInterface
     {
-        return CoreModuleStatic::core()?->getAdminEntityFactory()->findByUsername($username);
+        return CoreModuleStatic::core()?->finder->admin->findByUsername($username);
     }
 
     public static function findByEmail(string $email): ?UserEntityInterface
     {
-        return CoreModuleStatic::core()?->getAdminEntityFactory()->findByEmail($email);
+        return CoreModuleStatic::core()?->finder->admin->findByEmail($email);
     }
 
     public static function findById(int $id): ?UserEntityInterface
     {
-        return CoreModuleStatic::core()?->getAdminEntityFactory()->findById($id);
+        return CoreModuleStatic::core()?->finder->admin->findById($id);
     }
 
     public static function findByUsernameOrEmail(string $usernameOrEmail): ?UserEntityInterface
