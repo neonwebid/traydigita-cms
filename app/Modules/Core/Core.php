@@ -5,6 +5,7 @@ namespace ArrayAccess\TrayDigita\App\Modules\Core;
 
 use ArrayAccess\TrayDigita\App\Modules\Core\Abstracts\AbstractCoreMiddleware;
 use ArrayAccess\TrayDigita\App\Modules\Core\Abstracts\AbstractCoreTwigExtension;
+use ArrayAccess\TrayDigita\App\Modules\Core\Depends\PostLoop;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\Admin;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\AdminLog;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\AdminMeta;
@@ -24,6 +25,7 @@ use ArrayAccess\TrayDigita\App\Modules\Core\Entities\UserTerm;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\UserTermGroup;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\UserTermGroupMeta;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\UserTermMeta;
+use ArrayAccess\TrayDigita\App\Modules\Core\Finder\FinderCollector;
 use ArrayAccess\TrayDigita\App\Modules\Core\Static\CoreModuleStatic;
 use ArrayAccess\TrayDigita\App\Modules\Core\Traits\CoreModuleMetaInitTrait;
 use ArrayAccess\TrayDigita\App\Modules\Core\Traits\CoreModuleTemplatesTrait;
@@ -33,6 +35,7 @@ use ArrayAccess\TrayDigita\App\Modules\Core\Traits\CoreModuleUserEventTrait;
 use ArrayAccess\TrayDigita\App\Modules\Core\Traits\CoreModuleUserPermissiveTrait;
 use ArrayAccess\TrayDigita\Auth\Roles\AbstractCapability;
 use ArrayAccess\TrayDigita\Collection\Config;
+use ArrayAccess\TrayDigita\Container\Container;
 use ArrayAccess\TrayDigita\Container\Interfaces\ContainerIndicateInterface;
 use ArrayAccess\TrayDigita\Event\Interfaces\ManagerIndicateInterface;
 use ArrayAccess\TrayDigita\Http\ServerRequest;
@@ -134,6 +137,16 @@ final class Core implements ModuleInterface, ContainerIndicateInterface, Manager
     private bool $capabilityRegistered = false;
 
     /**
+     * @var FinderCollector $finder
+     */
+    public readonly FinderCollector $finder;
+
+    /**
+     * @var PostLoop $postLoop
+     */
+    public readonly PostLoop $postLoop;
+
+    /**
      * @param Modules $modules
      */
     final public function __construct(public readonly Modules $modules)
@@ -141,12 +154,34 @@ final class Core implements ModuleInterface, ContainerIndicateInterface, Manager
         if (!$this->modules->has($this)) {
             $this->modules->attach($this);
         }
-        $this->important = true;
-        $this->priority = PHP_INT_MIN;
         // set core
         CoreModuleStatic::setCore($this);
         // lock core
         CoreModuleStatic::lockCore();
+        $this->important = true;
+        $this->priority = PHP_INT_MIN;
+        $this->finder = new FinderCollector($this);
+        $this->postLoop = new PostLoop($this);
+        $container = $this->getContainer();
+        if ($container instanceof Container) {
+            $container->setParameter('core', $this);
+            $isCurrent = false;
+            $has = false;
+            if ($container->has(__CLASS__)) {
+                $has = true;
+                try {
+                    $isCurrent = $container->get(__CLASS__) === $this;
+                } catch (Throwable) {
+                }
+            }
+            if (!$isCurrent) {
+                $container->remove(__CLASS__);
+                $has = false;
+            }
+            if (!$has) {
+                $container->set(__CLASS__, $this);
+            }
+        }
     }
 
     /**
