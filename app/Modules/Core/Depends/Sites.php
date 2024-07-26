@@ -17,6 +17,11 @@ class Sites extends AbstractRepositoryUserDepends
 
     private ?bool $multisite = null;
 
+    /**
+     * @var bool|null $multisiteSupport
+     */
+    private ?bool $multisiteSupport = null;
+
     private Site|null|false $site = null;
 
     /**
@@ -31,6 +36,22 @@ class Sites extends AbstractRepositoryUserDepends
     }
 
     /**
+     * Check if multisite support is enabled
+     *
+     * @return bool
+     */
+    public function isMultiSiteSupport() : bool
+    {
+        if ($this->multisiteSupport !== null) {
+            return $this->multisiteSupport;
+        }
+        // enable or disable multisite
+        $config = ContainerHelper::use(Config::class, $this->getContainer())?->get('environment');
+        $this->multisiteSupport = $config instanceof Config && $config->get('multisite_support', false) === true;
+        return $this->multisiteSupport;
+    }
+
+    /**
      * @return bool
      */
     public function isMultiSite() : bool
@@ -38,11 +59,12 @@ class Sites extends AbstractRepositoryUserDepends
         if ($this->multisite !== null) {
             return $this->multisite;
         }
+
         // enable or disable multisite
-        $config = ContainerHelper::use(Config::class, $this->getContainer())?->get('environment');
-        if ($config instanceof Config && $config->get('disable_multisite', false)) {
+        if (!$this->isMultiSiteSupport()) {
             return $this->multisite = false;
         }
+
         /**
          * @var ?\ArrayAccess\TrayDigita\App\Modules\Core\Entities\Options $obj
          * @noinspection PhpFullyQualifiedNameUsageInspection

@@ -31,8 +31,8 @@ return [
         'prettyJson' => false,
         // system-wide time zone, if empty using system timezone
         'timezone' => '+00:00',
-        // enable or disable multisite
-        'disable_multisite' => true,
+        // support or not multisite
+        'multisite_support' => false,
         // dashboard path
         'dashboard_path' => '/dashboard',
         // user path
