@@ -43,7 +43,7 @@ return (function () {
         ?->attachOnce(
             'kernel.afterInitConfig',
             static function (KernelInterface $kernel) {
-                if (version_compare($kernel::VERSION, TD_MINIMUM_KERNEL_VERSION, '<=')) {
+                if (version_compare($kernel::VERSION, TD_MINIMUM_KERNEL_VERSION, '<')) {
                     throw new RuntimeException(
                         sprintf(
                             'System require minimum %1$s Kernel version (%2$s), please update your %1$s version.',
