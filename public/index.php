@@ -6,6 +6,7 @@ namespace ArrayAccess\TrayDigita\Root\Public;
 use ArrayAccess\TrayDigita\App\Modules\Core\Core;
 use ArrayAccess\TrayDigita\Exceptions\Runtime\RuntimeException;
 use ArrayAccess\TrayDigita\Kernel\Decorator;
+use ArrayAccess\TrayDigita\Kernel\Interfaces\KernelInterface;
 use ArrayAccess\TrayDigita\Module\Modules;
 use ArrayAccess\TrayDigita\Web;
 use function dirname;
@@ -23,6 +24,9 @@ return (function () {
     // define current index file
     define('TD_INDEX_FILE', __FILE__);
 
+    // define minimum kernel version
+    define('TD_MINIMUM_KERNEL_VERSION', '2.0.2');
+
     // require autoloader
     require TD_ROOT_DIRECTORY .'/vendor/autoload.php';
 
@@ -32,6 +36,24 @@ return (function () {
             require TD_ROOT_DIRECTORY . '/preload-index.php';
         })();
     }
+
+    // check kernel version
+    Decorator::kernel()
+        ->getManager()
+        ?->attachOnce(
+            'kernel.afterInitConfig',
+            static function (KernelInterface $kernel) {
+                if (version_compare($kernel::VERSION, TD_MINIMUM_KERNEL_VERSION, '<=')) {
+                    throw new RuntimeException(
+                        sprintf(
+                            'System require minimum %1$s Kernel version (%2$s), please update your %1$s version.',
+                            'TrayDigita',
+                            TD_MINIMUM_KERNEL_VERSION
+                        )
+                    );
+                }
+            }
+        );
 
     // check core Module
     Decorator::kernel()
