@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace ArrayAccess\TrayDigita\App\Controllers;
 
-use ArrayAccess\TrayDigita\Routing\AbstractController;
+use ArrayAccess\TrayDigita\App\Modules\Core\Route\Controllers\AbstractController;
 use ArrayAccess\TrayDigita\Routing\Attributes\Any;
 use ArrayAccess\TrayDigita\Routing\Attributes\Group;
 use ArrayAccess\TrayDigita\Util\Filter\ContainerHelper;

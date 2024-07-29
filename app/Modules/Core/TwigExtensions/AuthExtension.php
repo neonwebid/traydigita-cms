@@ -20,8 +20,16 @@ class AuthExtension extends AbstractCoreTwigExtension
                 fn () : bool => $this->core->isLoggedIn() === true
             ),
             new TwigFunction(
+                'is_user_login',
+                fn () : bool => $this->core->isUserLoggedIn() === true
+            ),
+            new TwigFunction(
+                'is_admin_login',
+                fn () : bool => $this->core->isAdminLoggedIn() === true
+            ),
+            new TwigFunction(
                 'user_account',
-                fn () : ?User =>$this->core->getUserAccount()
+                fn () : ?User => $this->core->getUserAccount()
             ),
             new TwigFunction(
                 'admin_account',

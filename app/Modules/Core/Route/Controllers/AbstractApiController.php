@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace ArrayAccess\TrayDigita\App\Modules\Core\Route\Controllers;
 
+use ArrayAccess\TrayDigita\App\Modules\Core\Core;
+use ArrayAccess\TrayDigita\App\Modules\Core\Route\Controllers\Interfaces\HasCapabilityInterface;
 use ArrayAccess\TrayDigita\Collection\Config;
 use ArrayAccess\TrayDigita\Http\Code;
 use ArrayAccess\TrayDigita\Util\Filter\ContainerHelper;
@@ -10,7 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use const JSON_PRETTY_PRINT;
 
-abstract class AbstractApiController extends AbstractAuthenticationBasedController
+class AbstractApiController extends AbstractController implements HasCapabilityInterface
 {
     final public function doBeforeDispatch(
         ServerRequestInterface $request,
@@ -30,19 +32,25 @@ abstract class AbstractApiController extends AbstractAuthenticationBasedControll
                 static fn ($flags) => JSON_PRETTY_PRINT|$flags
             );
         }
+
+        if (!$this->controllerPermitted()) {
+            return $this->getJsonResponder()->serve(Code::UNAUTHORIZED);
+        }
+
         $method = $this->getAuthenticationMethod();
         if ($method === null) {
             return null;
         }
         $jsonResponder = $this->getJsonResponder();
+        $core = $this->getControllerCoreModule();
         $match = match ($method) {
-            self::TYPE_USER => $this->user
+            Core::USER_MODE => $core->getUserAccount()
                 ? null
                 : $jsonResponder->serve(Code::UNAUTHORIZED),
-            self::TYPE_ADMIN => $this->admin
+            Core::ADMIN_MODE => $core->getAdminAccount()
                 ? null
                 : $jsonResponder->serve(Code::UNAUTHORIZED),
-            default => $this->admin || $this->user
+            default => $core->getAdminAccount() || $core->getUserAccount()
                 ? null
                 : $jsonResponder->serve(Code::UNAUTHORIZED),
         };

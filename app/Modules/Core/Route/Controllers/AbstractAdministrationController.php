@@ -3,14 +3,14 @@ declare(strict_types=1);
 
 namespace ArrayAccess\TrayDigita\App\Modules\Core\Route\Controllers;
 
-use ArrayAccess\TrayDigita\Traits\Service\TranslatorTrait;
+use ArrayAccess\TrayDigita\App\Modules\Core\Core;
+use ArrayAccess\TrayDigita\App\Modules\Core\Route\Controllers\Interfaces\HasCapabilityInterface;
 use ArrayAccess\TrayDigita\Util\Filter\DataNormalizer;
 use Psr\Http\Message\ServerRequestInterface;
 
-abstract class AbstractAdministrationController extends AbstractAuthenticationBasedController
+abstract class AbstractAdministrationController extends AbstractController implements
+    HasCapabilityInterface
 {
-    use TranslatorTrait;
-
     protected bool $doRedirect = true;
 
     /**
@@ -19,7 +19,6 @@ abstract class AbstractAdministrationController extends AbstractAuthenticationBa
      * @param ServerRequestInterface $request
      * @param string $method
      * @param ...$arguments
-     * @noinspection PhpMissingReturnTypeInspection
      * @noinspection PhpDocSignatureIsNotCompleteInspection
      */
     final public function doBeforeDispatch(
@@ -28,8 +27,8 @@ abstract class AbstractAdministrationController extends AbstractAuthenticationBa
         ...$arguments
     ) {
         $redirect = $this->doRedirect ? match ($this->getAuthenticationMethod()) {
-            self::TYPE_ADMIN => $this->admin ? null : $this->dashboardAuthPath,
-            self::TYPE_USER => $this->user ? null : $this->userAuthPath,
+            Core::ADMIN_MODE => $this->getControllerCoreModule()->getAdminAccount() ? null : $this->dashboardAuthPath,
+            Core::USER_MODE => $this->getControllerCoreModule()->getUserAccount() ? null : $this->userAuthPath,
             default => null,
         } : null;
         return $redirect

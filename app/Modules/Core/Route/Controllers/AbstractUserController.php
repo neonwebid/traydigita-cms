@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace ArrayAccess\TrayDigita\App\Modules\Core\Route\Controllers;
 
+use ArrayAccess\TrayDigita\App\Modules\Core\Core;
 use Psr\Http\Message\ServerRequestInterface;
 use function is_string;
 use function reset;
@@ -11,7 +12,15 @@ use function str_starts_with;
 
 abstract class AbstractUserController extends AbstractAdministrationController
 {
-    protected ?string $authenticationMethod = self::TYPE_USER;
+    protected ?string $authenticationMethod = Core::USER_MODE;
+
+    /**
+     * @return string
+     */
+    public function getControllerUserMode(): string
+    {
+        return $this->authenticationMethod;
+    }
 
     /**
      * @param ServerRequestInterface $request
