@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace ArrayAccess\TrayDigita\App\Modules\Core\Route\Controllers;
 
 use ArrayAccess\TrayDigita\App\Modules\Core\Core;
+use ArrayAccess\TrayDigita\App\Modules\Core\Depends\PostLoop;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\Admin;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\User;
 use ArrayAccess\TrayDigita\App\Modules\Core\Exceptions\ForbiddenException;
@@ -11,6 +12,7 @@ use ArrayAccess\TrayDigita\App\Modules\Core\Route\Attributes\Dashboard as Dashbo
 use ArrayAccess\TrayDigita\App\Modules\Core\Route\Attributes\User as UserAttribute;
 use ArrayAccess\TrayDigita\App\Modules\Core\Route\Controllers\Interfaces\BaseControllerInterface;
 use ArrayAccess\TrayDigita\App\Modules\Core\Route\Controllers\Interfaces\HasCapabilityInterface;
+use ArrayAccess\TrayDigita\App\Modules\Core\Route\Controllers\Interfaces\PostsModeControllerInterface;
 use ArrayAccess\TrayDigita\App\Modules\Core\Static\CoreModuleStatic;
 use ArrayAccess\TrayDigita\Auth\Roles\Interfaces\CapabilityInterface;
 use ArrayAccess\TrayDigita\Auth\Roles\Interfaces\PermissionInterface;
@@ -25,6 +27,11 @@ use Throwable;
 abstract class AbstractController extends CoreAbstractController implements BaseControllerInterface
 {
     use TranslatorTrait;
+
+    /**
+     * @var string $postMode
+     */
+    protected string $postMode = PostLoop::MODE_NOT_FOUND;
 
     /**
      * @var string $authPath
@@ -46,19 +53,28 @@ abstract class AbstractController extends CoreAbstractController implements Base
      */
     protected ?string $authenticationMethod = null;
 
+    /**
+     * @param ServerRequestInterface $request
+     * @param string $method
+     * @param ...$arguments
+     * @noinspection PhpDocSignatureIsNotCompleteInspection
+     */
     final public function beforeDispatch(ServerRequestInterface $request, string $method, ...$arguments)
     {
         $this->authPath = '/'.trim(DataNormalizer::normalizeUnixDirectorySeparator($this->authPath), '/');
         $this->authPath = $this->authPath ?: '/auth';
         $this->userAuthPath = UserAttribute::path($this->authPath);
         $this->dashboardAuthPath = DashboardAttribute::path($this->authPath);
+        $core = $this->getCoreModule();
+        $postMode = $this instanceof PostsModeControllerInterface ? $this->getPostMode() : PostLoop::MODE_NOT_FOUND;
+        $postMode = $core->postLoop->isValidMode($postMode) ? $postMode : PostLoop::MODE_NOT_FOUND;
+        $core->postLoop->setMode($postMode);
         $mode = $this->getControllerUserMode();
         if ($mode === Core::ADMIN_MODE) {
-            $this->getControllerCoreModule()->setAsAdminMode();
+            $core->setAsAdminMode();
         } elseif ($mode === Core::USER_MODE) {
-            $this->getControllerCoreModule()->setAsUserMode();
+            $core->setAsUserMode();
         }
-
         $response = $this->doBeforeDispatch($request, $method, ...$arguments);
         if ($response !== null) {
             return $response;
@@ -73,9 +89,9 @@ abstract class AbstractController extends CoreAbstractController implements Base
     {
         $view = parent::getView();
         $view->setParameter('current_user', $this->getCurrentUser());
-        $view->setParameter('user_account', $this->getControllerCoreModule()->getUserAccount());
-        $view->setParameter('admin_account', $this->getControllerCoreModule()->getAdminAccount());
-        $view->setParameter('is_login', $this->getControllerCoreModule()->isLoggedIn());
+        $view->setParameter('user_account', $this->getCoreModule()->getUserAccount());
+        $view->setParameter('admin_account', $this->getCoreModule()->getAdminAccount());
+        $view->setParameter('is_login', $this->getCoreModule()->isLoggedIn());
         return $view;
     }
 
@@ -85,8 +101,8 @@ abstract class AbstractController extends CoreAbstractController implements Base
     public function getCurrentUser() : Admin|User|null
     {
         return $this->getControllerUserMode() === Core::ADMIN_MODE
-            ? $this->getControllerCoreModule()->getUserAccount()
-            : $this->getControllerCoreModule()->getAdminAccount();
+            ? $this->getCoreModule()->getUserAccount()
+            : $this->getCoreModule()->getAdminAccount();
     }
 
     /**
@@ -99,10 +115,10 @@ abstract class AbstractController extends CoreAbstractController implements Base
 
     public function getControllerRole(): ?RoleInterface
     {
-        return $this->getCurrentUser()?->getObjectRole()??$this->getControllerCoreModule()->getRole();
+        return $this->getCurrentUser()?->getObjectRole()??$this->getCoreModule()->getRole();
     }
 
-    public function getControllerCoreModule(): Core
+    public function getCoreModule(): Core
     {
         try {
             $core = $this->getModule(Core::class);
@@ -117,7 +133,7 @@ abstract class AbstractController extends CoreAbstractController implements Base
      */
     public function getControllerPermission(): PermissionInterface
     {
-        return $this->getControllerCoreModule()->getPermission();
+        return $this->getCoreModule()->getPermission();
     }
 
     /**
@@ -170,7 +186,23 @@ abstract class AbstractController extends CoreAbstractController implements Base
         if ($authMethod === Core::USER_MODE) {
             return Core::USER_MODE;
         }
-        return $this->getControllerCoreModule()->getCurrentMode();
+        return $this->getCoreModule()->getCurrentMode();
+    }
+
+    /**
+     * @return string
+     */
+    public function getPostMode() : string
+    {
+        return $this->postMode;
+    }
+
+    /**
+     * @return PostLoop
+     */
+    public function getPostLoop() : PostLoop
+    {
+        return $this->getCoreModule()->postLoop;
     }
 
     /**

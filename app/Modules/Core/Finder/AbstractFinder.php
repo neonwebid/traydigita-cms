@@ -6,6 +6,7 @@ namespace ArrayAccess\TrayDigita\App\Modules\Core\Finder;
 use ArrayAccess\TrayDigita\App\Modules\Core\Core;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\Site;
 use ArrayAccess\TrayDigita\Database\Result\AbstractRepositoryFinder;
+use ArrayAccess\TrayDigita\Util\Filter\Consolidation;
 
 abstract class AbstractFinder extends AbstractRepositoryFinder
 {
@@ -33,5 +34,10 @@ abstract class AbstractFinder extends AbstractRepositoryFinder
     public function getSite() : ?Site
     {
         return $this->site;
+    }
+
+    public function __debugInfo(): ?array
+    {
+        return Consolidation::debugInfo($this);
     }
 }

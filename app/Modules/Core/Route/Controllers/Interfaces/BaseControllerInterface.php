@@ -14,7 +14,7 @@ interface BaseControllerInterface extends ControllerInterface
      *
      * @return Core
      */
-    public function getControllerCoreModule() : Core;
+    public function getCoreModule() : Core;
 
     /**
      * Get the mode of the controller

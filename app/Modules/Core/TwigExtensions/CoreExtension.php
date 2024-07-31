@@ -5,6 +5,7 @@ namespace ArrayAccess\TrayDigita\App\Modules\Core\TwigExtensions;
 
 use ArrayAccess\TrayDigita\App\Modules\Core\Abstracts\AbstractCoreTwigExtension;
 use ArrayAccess\TrayDigita\App\Modules\Core\Core;
+use ArrayAccess\TrayDigita\App\Modules\Core\TwigExtensions\Parser\WhileParser;
 use Twig\TwigFunction;
 
 class CoreExtension extends AbstractCoreTwigExtension
@@ -36,6 +37,21 @@ class CoreExtension extends AbstractCoreTwigExtension
                 'is_user_page',
                 fn () : bool => $this->core->isUserPath()
             ),
+            new TwigFunction(
+                'while',
+                function ($condition, $callback) {
+                    while ($condition()) {
+                        $callback();
+                    }
+                }
+            )
+        ];
+    }
+
+    public function getTokenParsers(): array
+    {
+        return [
+            new WhileParser()
         ];
     }
 }

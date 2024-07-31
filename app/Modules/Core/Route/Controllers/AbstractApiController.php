@@ -42,7 +42,7 @@ class AbstractApiController extends AbstractController implements HasCapabilityI
             return null;
         }
         $jsonResponder = $this->getJsonResponder();
-        $core = $this->getControllerCoreModule();
+        $core = $this->getCoreModule();
         $match = match ($method) {
             Core::USER_MODE => $core->getUserAccount()
                 ? null

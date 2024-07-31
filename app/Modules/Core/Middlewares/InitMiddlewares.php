@@ -169,7 +169,7 @@ class InitMiddlewares extends AbstractCoreMiddleware
             );
             // unset content type & set cookie headers
             unset(
-                $headers['content-type'],
+                //$headers['content-type'],
                 $headers['set-cookie'],
                 $headers['cache-control'],
                 $headers['content-length']
@@ -184,6 +184,9 @@ class InitMiddlewares extends AbstractCoreMiddleware
         } catch (Throwable) {
             return null;
         }
+        if (!isset($headers['content-type'])) {
+            $headers['content-type'] = [$headerContentType];
+        }
         $this->serveFromCache = true;
         $responseFactory = ContainerHelper::service(
             ResponseFactoryInterface::class,
@@ -195,7 +198,7 @@ class InitMiddlewares extends AbstractCoreMiddleware
         foreach ($headers as $name => $header) {
             $response = $response->withHeader($name, $header);
         }
-        // if has content length & no debug bar
+        // if it has content length & no debug bar
         if ($hasContentLength && !$this->showDebugBar) {
             $response = $response->withHeader('Content-Length', $response->getBody()->getSize());
         }

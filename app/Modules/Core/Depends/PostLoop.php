@@ -7,10 +7,48 @@ use ArrayAccess\TrayDigita\App\Modules\Core\Core;
 use ArrayAccess\TrayDigita\App\Modules\Core\Entities\Post as PostEntity;
 use ArrayAccess\TrayDigita\Database\Entities\Interfaces\AvailabilityStatusEntityInterface;
 use ArrayAccess\TrayDigita\Exceptions\InvalidArgument\InvalidArgumentException;
+use ArrayAccess\TrayDigita\Util\Filter\Consolidation;
 use DateTimeInterface;
-use Doctrine\Common\Collections\Criteria;
 use SplObjectStorage;
 
+/**
+ * @property-read int $perPage
+ * @property-read int $page
+ * @property-read array $orderBy
+ * @property-read array $status
+ * @property-read string $postType
+ * @property-read string $mode
+ * @property-read PostEntity|null $post
+ * @property-read string|int|null $postIdOrSlug
+ * @property-read string|int|null $authorIdOrSlug
+ * @property-read DateTimeInterface|null $dateTime
+ * @property-read string|int|null $categoryIdOrSlug
+ * @property-read string|int|null $tagIdOrSlug
+ * @property-read string|null $searchQuery
+ * @property-read bool|null $found
+ * @property-read int $currentPostIndex
+ * @property-read int $totalPosts
+ * @property-read bool $inTheLoop
+ * @property-read SplObjectStorage<PostEntity>|null $posts
+ * @property-read bool $isHomepage
+ * @property-read bool $isFound
+ * @property-read bool $isDate
+ * @property-read bool $isYear
+ * @property-read bool $isMonth
+ * @property-read bool $isDay
+ * @property-read bool $isCategory
+ * @property-read bool $isSearch
+ * @property-read bool $isTag
+ * @property-read bool $isAuthor
+ * @property-read bool $isArchive
+ * @property-read bool $isSingular
+ * @property-read bool $isPage
+ * @property-read bool $isSingle
+ * @property-read bool $is404
+ * @property-read bool $isHome
+ * @property-read bool $isFrontPage
+ * @property-read bool $isPaged
+ */
 class PostLoop
 {
     public const MAX_RESULTS = 1000;
@@ -134,9 +172,9 @@ class PostLoop
     protected string|int|null $tagIdOrSlug = null;
 
     /**
-     * @var string|null $search
+     * @var string|null $searchQuery
      */
-    protected ?string $search = null;
+    protected ?string $searchQuery = null;
 
     /**
      * @var bool|null $found
@@ -239,17 +277,17 @@ class PostLoop
         $this->tagIdOrSlug = $tagIdOrSlug;
     }
 
-    public function getSearch(): ?string
+    public function getSearchQuery(): ?string
     {
-        return $this->search;
+        return $this->searchQuery;
     }
 
-    public function setSearch(?string $search): void
+    public function setSearchQuery(?string $searchQuery): void
     {
         if ($this->inTheLoop) {
             throw new InvalidArgumentException('Cannot change search after post is initialized');
         }
-        $this->search = $search;
+        $this->searchQuery = $searchQuery;
     }
 
     public function getMode(): string
@@ -317,10 +355,10 @@ class PostLoop
             if (!$this->isValidOrderBy($key)) {
                 throw new InvalidArgumentException('Invalid order by key');
             }
-            if (!in_array($value, ['ASC', 'DESC', 'RANDOM'], true)) {
+            if (!in_array($value, ['ASC', 'DESC'], true)) {
                 throw new InvalidArgumentException('Invalid order by value');
             }
-            $newOrderBy[$key] = strtoupper($value);
+            $newOrderBy[$key] = $value;
         }
         $this->orderBy = $newOrderBy;
     }
@@ -412,7 +450,7 @@ class PostLoop
 
     public function isSearch(): bool
     {
-        return $this->mode === self::MODE_SEARCH && $this->search !== null && $this->posts !== null;
+        return $this->mode === self::MODE_SEARCH && $this->searchQuery !== null && $this->posts !== null;
     }
 
     public function isTag(): bool
@@ -524,6 +562,7 @@ class PostLoop
         if ($this->posts === null || $this->found === false) {
             return null;
         }
+
         if ($this->currentPostIndex === -1) {
             $this->core->getManager()->dispatch(
                 'post.loopStart',
@@ -561,20 +600,21 @@ class PostLoop
 
     /**
      * Check if there are posts
-     *
      */
     public function havePosts() : bool
     {
         if ($this->posts === null) {
-            $this->initPosts();
+            $this->initialize();
         }
         if ($this->isFound() === false) {
             $this->inTheLoop = false;
             return false;
         }
+
         if ($this->currentPostIndex + 1 < $this->totalPosts) {
             return true;
         }
+
         if ($this->currentPostIndex + 1 === $this->totalPosts && $this->totalPosts > 0) {
             // Do some cleaning up after the loop.
             $this->rewindPosts();
@@ -584,36 +624,196 @@ class PostLoop
     }
 
     /**
+     * @var ?SplObjectStorage<PostEntity> $posts
+     */
+    private SplObjectStorage|null $posts = null;
+
+    /**
      * @return ?SplObjectStorage<PostEntity>
      */
-    private ?SplObjectStorage $posts = null;
-
-    private function initPosts(): void
+    public function getPosts(): ?SplObjectStorage
     {
-        $site = $this->core->getSite()->current()?->getId();
-        $criteria = Criteria::create()
-            ->where(
-                $site ? Criteria::expr()->eq('site_id', $site) : Criteria::expr()->isNull('site_id')
-            )->andWhere(
-                Criteria::expr()->in('status', $this->getStatus())
-            )->andWhere(
-                Criteria::expr()->eq('post_type', $this->postType)
-            )->setMaxResults($this->perPage)
-            ->setFirstResult(($this->page - 1) * $this->perPage)
-            ->orderBy($this->orderBy);
+        return $this->posts;
+    }
 
-        // todo implement another way to get posts
-        // ...
-
+    /**
+     * @return void
+     */
+    protected function initialize(): void
+    {
+        $site = $this->core->getSite()->current();
+        $this->found = false;
         $this->posts = new SplObjectStorage();
-        foreach ($this->core->finder->post->findByCriteria(
-            $criteria
-        ) as $post) {
-            $this->posts->attach($post);
+        $offset = $this->getPerPage() * ($this->getPage() - 1);
+        $limit = $this->getPerPage();
+        switch ($this->getMode()) {
+            case self::MODE_SINGLE:
+                $identity = $this->getPostIdOrSlug();
+                if ($identity === null) {
+                    $this->found = false;
+                    return;
+                }
+                $criteria = $this->core->finder->post->findSinglePostCriteria(
+                    $identity,
+                    $this->getStatus(),
+                    $this->getPostType(),
+                    $site
+                );
+                break;
+            case self::MODE_SEARCH:
+                $criteria = $this->core->finder->post->findPostsSearchCriteria(
+                    $this->getSearchQuery(),
+                    $this->getOrderBy(),
+                    $limit,
+                    $offset,
+                    $this->getStatus(),
+                    $this->getPostType(),
+                    $site
+                );
+                break;
+            case self::MODE_CATEGORY:
+                $criteria = $this->core->finder->post->findPostsByCategoryCriteria(
+                    $this->getCategoryIdOrSlug(),
+                    $this->getOrderBy(),
+                    $limit,
+                    $offset,
+                    $this->getStatus(),
+                    $this->getPostType(),
+                    $site
+                );
+                break;
+            case self::MODE_TAG:
+                $criteria = $this->core->finder->post->findPostsByTagCriteria(
+                    $this->getTagIdOrSlug(),
+                    $this->getOrderBy(),
+                    $limit,
+                    $offset,
+                    $this->getStatus(),
+                    $this->getPostType(),
+                    $site
+                );
+                break;
+            case self::MODE_AUTHOR:
+                $criteria = $this->core->finder->post->findPostsByAuthorCriteria(
+                    $this->getAuthorIdOrSlug(),
+                    $this->getOrderBy(),
+                    $limit,
+                    $offset,
+                    $this->getStatus(),
+                    $this->getPostType(),
+                    $site
+                );
+                break;
+            case self::MODE_YEAR:
+                $criteria = $this->core->finder->post->findPostsByYearCriteria(
+                    $this->getDateTime(),
+                    $this->getOrderBy(),
+                    $limit,
+                    $offset,
+                    $this->getStatus(),
+                    $this->getPostType(),
+                    $site
+                );
+                break;
+            case self::MODE_MONTH:
+                $criteria = $this->core->finder->post->findPostsByMonthCriteria(
+                    $this->getDateTime(),
+                    $this->getOrderBy(),
+                    $limit,
+                    $offset,
+                    $this->getStatus(),
+                    $this->getPostType(),
+                    $site
+                );
+                break;
+            case self::MODE_DAY:
+                $criteria = $this->core->finder->post->findPostsByDayCriteria(
+                    $this->getDateTime(),
+                    $this->getOrderBy(),
+                    $limit,
+                    $offset,
+                    $this->getStatus(),
+                    $this->getPostType(),
+                    $site
+                );
+                break;
+            case self::MODE_HOMEPAGE:
+                $criteria = $this->core->finder->post->findPostsCriteria(
+                    $this->getOrderBy(),
+                    $limit,
+                    $offset,
+                    $this->getStatus(),
+                    $this->getPostType(),
+                    $site
+                );
+                break;
+            default:
+                $this->found = false;
+                $criteria = $this->core->finder->post->findSinglePostCriteria(
+                    null
+                );
+                break;
         }
+        $this->core->finder->post->findByCriteria($criteria)->forAll(
+            function (int $postId, PostEntity $post) {
+                $this->posts->attach($post);
+                return true;
+            }
+        );
         $this->totalPosts = $this->posts->count();
         $this->found = $this->totalPosts > 0;
         $this->currentPostIndex = -1;
         $this->rewindPosts();
+    }
+
+    public function __debugInfo(): ?array
+    {
+        return Consolidation::debugInfo($this, excludeKeys: ['posts', 'post']);
+    }
+
+    /**
+     * @param string $name
+     * @return PostEntity|SplObjectStorage<PostEntity>|null
+     */
+    public function __get(string $name)
+    {
+        return match ($name) {
+            'posts' => $this->getPosts(),
+            'post' => $this->getPost(),
+            'perPage' => $this->getPerPage(),
+            'page' => $this->getPage(),
+            'orderBy' => $this->getOrderBy(),
+            'status' => $this->getStatus(),
+            'postType' => $this->getPostType(),
+            'mode' => $this->getMode(),
+            'postIdOrSlug' => $this->getPostIdOrSlug(),
+            'authorIdOrSlug' => $this->getAuthorIdOrSlug(),
+            'dateTime' => $this->getDateTime(),
+            'categoryIdOrSlug' => $this->getCategoryIdOrSlug(),
+            'tagIdOrSlug' => $this->getTagIdOrSlug(),
+            'searchQuery' => $this->getSearchQuery(),
+            'found', 'isFound' => $this->isFound(),
+            'currentPostIndex' => $this->currentPostIndex,
+            'totalPosts' => $this->totalPosts,
+            'inTheLoop' => $this->isInTheLoop(),
+            'isHomepage' => $this->isHomepage(),
+            'isDate' => $this->isDate(),
+            'isYear' => $this->isYear(),
+            'isMonth' => $this->isMonth(),
+            'isDay' => $this->isDay(),
+            'isCategory' => $this->isCategory(),
+            'isSearch' => $this->isSearch(),
+            'isTag' => $this->isTag(),
+            'isAuthor' => $this->isAuthor(),
+            'isArchive' => $this->isArchive(),
+            'isSingular' => $this->isSingular(),
+            'isPage' => $this->isPage(),
+            'isSingle' => $this->isSingle(),
+            'is404' => $this->is404(),
+            'isHome' => $this->isHome(),
+            'isFrontPage' => $this->isFrontPage(),
+            'isPaged' => $this->isPaged(),
+            default => null,
+        };
     }
 }

@@ -1,11 +1,26 @@
 {% extends "base.twig" %}
 {% block body %}
-    <div id="content" class="container page-error error-404">
+    <div id="content" class="container page-homepage">
         <header>
-            <h1 class="page-title">Home</h1>
+            <h1 class="page-title">{{ __('Home') }}</h1>
         </header>
-        <section id="content-section" class="container">
-            {{ content | raw }}
-        </section>
+        {%  if (have_posts()) == false %}
+            <p>{{ __('No posts found.') }}</p>
+        {% else %}
+
+            {%  while have_posts() and the_post() %}
+                {# or can use like this #}
+                {# {%  while have_posts() %} #}
+                {# {{ the_post() }} #}
+
+                <article class="post post-{{ the_id() }}">
+                    <h2 class="post-title">{{ the_title() }}</h2>
+                    <p>{{ the_excerpt(1) }}</p>
+                    {#<span class="date">{{ the_date() }}</span>#}
+                </article>
+
+            {%  endwhile %}
+        {% endif %}
+
     </div>
 {% endblock %}

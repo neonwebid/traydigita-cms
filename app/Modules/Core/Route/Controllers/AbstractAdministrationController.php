@@ -27,8 +27,8 @@ abstract class AbstractAdministrationController extends AbstractController imple
         ...$arguments
     ) {
         $redirect = $this->doRedirect ? match ($this->getAuthenticationMethod()) {
-            Core::ADMIN_MODE => $this->getControllerCoreModule()->getAdminAccount() ? null : $this->dashboardAuthPath,
-            Core::USER_MODE => $this->getControllerCoreModule()->getUserAccount() ? null : $this->userAuthPath,
+            Core::ADMIN_MODE => $this->getCoreModule()->getAdminAccount() ? null : $this->dashboardAuthPath,
+            Core::USER_MODE => $this->getCoreModule()->getUserAccount() ? null : $this->userAuthPath,
             default => null,
         } : null;
         return $redirect

@@ -529,6 +529,13 @@ class Post extends AbstractEntity implements AvailabilityStatusEntityInterface
         return $this->content;
     }
 
+    public function getExcerpt(int $length = 255): string
+    {
+        $content = $this->getContent();
+        $content = trim(strip_tags($content));
+        return substr($content, 0, $length);
+    }
+
     public function setContent(string $content): void
     {
         $this->content = $content;
