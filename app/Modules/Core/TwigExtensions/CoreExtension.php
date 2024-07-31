@@ -37,14 +37,17 @@ class CoreExtension extends AbstractCoreTwigExtension
                 'is_user_page',
                 fn () : bool => $this->core->isUserPath()
             ),
-            new TwigFunction(
+            /*new TwigFunction(
                 'while',
                 function ($condition, $callback) {
+                    if (!is_callable($condition) || !is_callable($callback)) {
+                        return;
+                    }
                     while ($condition()) {
                         $callback();
                     }
                 }
-            )
+            )*/
         ];
     }
 
